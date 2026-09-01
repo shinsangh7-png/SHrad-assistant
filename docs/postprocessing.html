@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>후처리 규칙 - SH Rad Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>SH Rad Assistant</h1>
+    <nav>
+      <a href="index.html">판독 작성</a>
+      <a href="templates.html">템플릿 관리</a>
+      <a href="postprocessing.html" class="active">후처리 규칙</a>
+    </nav>
+  </header>
+
+  <div class="rules-layout">
+    <div class="panel">
+      <h2>후처리 규칙</h2>
+      <p class="rules-desc">교정(Correction) 완료 후 자동으로 적용되는 찾기/바꾸기 규칙입니다. 예: Left → Lt.</p>
+
+      <div class="rules-header-row">
+        <span>찾을 단어</span>
+        <span></span>
+        <span>바꿀 텍스트</span>
+        <span></span>
+        <span></span>
+      </div>
+      <div id="rules-list"></div>
+
+      <button id="add-rule-btn" style="width: 100%; margin-top: 12px;">+ 새 규칙</button>
+      <div class="status-msg" id="status-msg"></div>
+
+      <div class="data-io-row">
+        <button id="export-btn">내보내기</button>
+        <button id="import-btn">가져오기</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display: none;" />
+      </div>
+      <div class="status-msg" id="io-status"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/postprocessing-manager.js"></script>
+</body>
+</html>
