@@ -37,14 +37,21 @@ const dictation = new Dictation({
   onError: (msg) => setMicStatus(msg, true),
 });
 
+let isStarting = false;
+
 function startRecording() {
+  if (isStarting || isRecording) return;
+  isStarting = true;
   dictation
     .start()
     .then(() => {
       isRecording = true;
       startBtn.classList.add("recording");
     })
-    .catch((e) => setMicStatus(`마이크 시작 실패: ${e.message}`, true));
+    .catch((e) => setMicStatus(`마이크 시작 실패: ${e.message}`, true))
+    .finally(() => {
+      isStarting = false;
+    });
 }
 
 function stopRecording() {
@@ -58,13 +65,20 @@ function toggleRecording() {
   else startRecording();
 }
 
+// Mouse click on the mic button is the deliberate full stop/start toggle.
 startBtn.addEventListener("mousedown", (e) => e.preventDefault());
 startBtn.addEventListener("click", toggleRecording);
 
+// F6 is meant to be tapped often, mid-sentence, to mark where one phrase ends and the next
+// begins -- so while already recording it just cuts the current segment off and sends it,
+// without stopping the mic (no re-acquiring the microphone, no recalibration delay, and
+// nothing spoken right after the tap gets lost waiting for that). To actually stop dictating,
+// click the mic button instead of using F6.
 document.addEventListener("keydown", (e) => {
   if (e.key === "F6") {
     e.preventDefault();
-    toggleRecording();
+    if (isRecording) dictation.cutNow();
+    else startRecording();
   }
 });
 

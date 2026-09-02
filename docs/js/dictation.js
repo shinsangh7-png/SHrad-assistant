@@ -8,7 +8,7 @@ const SILENCE_DURATION_MS = 700;
 const MAX_SEGMENT_MS = 15000;
 const MIN_SEGMENT_MS = 300;
 const MIN_SPEECH_CONFIRM_MS = 150;
-const MIN_SPEECH_ACTIVE_MS = 400;
+const MIN_SPEECH_ACTIVE_MS = 250;
 const MAX_TERMS_PROMPT_CHARS = 300;
 const MAX_PLAUSIBLE_WORDS_PER_SEC = 4.5;
 const SUSPECT_WORD_MARGIN = 3;
@@ -132,6 +132,15 @@ export class Dictation {
     this.onStatus?.("stopped");
   }
 
+  // Force whatever's been captured so far to be cut off and sent for transcription right
+  // now, without stopping the mic or ending the dictation session -- lets the user manually
+  // mark a segment boundary (e.g. pressing F6 between phrases) instead of waiting on the
+  // silence timer, with no mic-teardown/recalibration cost since the stream stays open.
+  cutNow() {
+    if (!this.running) return;
+    this._finishSegment();
+  }
+
   async _calibrateNoiseFloor() {
     const samples = [];
     const start = performance.now();
@@ -205,8 +214,12 @@ export class Dictation {
       this.silenceStart = null;
       if (!this.isSpeaking && this.aboveThresholdMs >= MIN_SPEECH_CONFIRM_MS) {
         this.isSpeaking = true;
+        // credit the whole above-threshold run, including the confirm window itself --
+        // otherwise a short word barely longer than MIN_SPEECH_CONFIRM_MS would be undercounted.
+        this.speechActiveMs += this.aboveThresholdMs;
+      } else if (this.isSpeaking) {
+        this.speechActiveMs += dt;
       }
-      if (this.isSpeaking) this.speechActiveMs += dt;
     } else {
       this.aboveThresholdMs = 0;
       if (this.isSpeaking) {
@@ -232,16 +245,14 @@ export class Dictation {
       if (!trimmed) return;
 
       if (NON_LATIN_SCRIPT_RE.test(trimmed)) {
-        this.onTranscript?.(`[⚠ 확인필요: ${trimmed}]`);
-        this.onError?.("영어가 아닌 문자로 인식되었습니다 — 다시 말씀해주세요.");
+        this.onError?.("영어가 아닌 문자로 인식되어 해당 구간을 건너뛰었습니다 — 다시 말씀해주세요.");
         return;
       }
 
       const wordCount = trimmed.split(/\s+/).length;
       const maxPlausibleWords = Math.ceil((speechActiveMs / 1000) * MAX_PLAUSIBLE_WORDS_PER_SEC) + SUSPECT_WORD_MARGIN;
       if (wordCount > maxPlausibleWords) {
-        this.onTranscript?.(`[⚠ 확인필요: ${trimmed}]`);
-        this.onError?.("말한 길이에 비해 인식된 문장이 너무 깁니다 — 오인식(환청) 가능성, 확인해주세요.");
+        this.onError?.("말한 길이에 비해 인식된 문장이 너무 길어 해당 구간을 건너뛰었습니다 — 오인식(환청) 가능성, 다시 말씀해주세요.");
       } else {
         this.onTranscript?.(trimmed);
       }
