@@ -2,147 +2,70 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>판독 작성 - SH Rad Assistant</title>
+  <title>SH Rad</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <h1>SH Rad Assistant</h1>
-    <nav>
-      <a href="index.html" class="active">판독 작성</a>
-      <a href="templates.html">템플릿 관리</a>
-      <a href="postprocessing.html">후처리 규칙</a>
-    </nav>
-    <button id="settings-btn" title="API 키 설정">설정</button>
-  </header>
-
-  <div class="main-layout">
-    <div class="panel">
-      <button id="new-report-btn" class="primary" style="width: 100%; margin-bottom: 22px;">새 판독</button>
-
-      <div class="form-row">
-        <label for="modality-select">Modality</label>
-        <select id="modality-select"></select>
+  <div class="app">
+    <header class="topbar">
+      <h1>SH Rad</h1>
+      <div class="tabs">
+        <button type="button" class="tab-btn active" data-tab="tab-transcribe">전사</button>
+        <button type="button" class="tab-btn" data-tab="tab-rules">후처리 규칙</button>
       </div>
-      <div class="form-row">
-        <label for="region-select">검사부위</label>
-        <select id="region-select"></select>
-      </div>
-      <div class="form-row">
-        <label for="patient-context">Clinical information</label>
-        <textarea id="patient-context" style="min-height: 90px;"></textarea>
-      </div>
+      <button id="settings-btn" class="icon-btn" title="설정">⚙</button>
+    </header>
 
-      <div class="form-row">
-        <label>Templates</label>
-        <ul id="template-list-inline" class="template-inline-list"></ul>
-      </div>
-
-      <button id="open-sequence-btn" style="width: 100%;">시퀀스 생성</button>
-    </div>
-
-    <div class="panel">
-      <h2>Findings</h2>
+    <div id="tab-transcribe" class="tab-panel">
       <div class="mic-row">
-        <button id="mic-toggle-btn" class="mic-btn" title="녹음 시작/정지 (F6)">
+        <button id="start-btn" class="mic-btn" title="전사 시작/정지 (F6)">
           <span class="rec-dot"></span>
           <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0H3a9 9 0 0 0 8 8.94V22h2v-2.06A9 9 0 0 0 21 11h-2z"/></svg>
         </button>
-        <span class="hotkey-hint">단축키 <kbd>F6</kbd> — 커서 위치에 바로 삽입됩니다</span>
-      </div>
-      <span class="status-msg" id="mic-status"></span>
-
-      <div class="report-field">
-        <label for="findings-text">Findings</label>
-        <textarea id="findings-text" placeholder="마이크(F6)로 소견을 구술하거나 직접 입력하세요."></textarea>
-      </div>
-      <div class="report-field">
-        <label for="conclusion-text">Conclusion</label>
-        <textarea id="conclusion-text"></textarea>
-      </div>
-      <div class="report-field">
-        <label for="recommendation-text">Recommendation</label>
-        <textarea id="recommendation-text"></textarea>
+        <span class="hotkey-hint"><kbd>F6</kbd> 전사 시작/정지</span>
+        <span class="status-msg" id="mic-status"></span>
       </div>
 
-      <div class="actions-row">
-        <button id="correct-only-btn">Correction</button>
-        <button id="copy-report-btn" class="primary">Copy</button>
-      </div>
-      <div class="status-msg" id="report-status"></div>
+      <textarea id="transcript-text" placeholder="F6을 눌러 전사를 시작하세요."></textarea>
+
+      <button id="correct-btn" class="primary" style="width: 100%;">Correction</button>
     </div>
 
-    <div class="panel">
-      <h2>Key images</h2>
-      <div id="key-images-dropzone" class="image-dropzone" tabindex="0">
-        <span id="key-images-placeholder" class="dropzone-placeholder">클릭 후 Ctrl+V로 이미지 붙여넣기</span>
-        <div id="key-images-preview" class="image-thumb-row"></div>
-      </div>
-
-      <button id="open-checkpoints-btn" style="width: 100%; margin-top: 16px;">Clinical Check Point</button>
-    </div>
-  </div>
-
-  <div id="checkpoints-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2>Clinical Check Point</h2>
-        <button id="close-checkpoints-modal" class="modal-close" aria-label="닫기">&times;</button>
-      </div>
-      <div class="status-msg" id="checkpoints-modal-status"></div>
-      <div class="dual-panel">
-        <div class="dual-col">
-          <h3>Claude</h3>
-          <div id="claude-checkpoints-content" class="placeholder-panel">불러오는 중...</div>
-        </div>
-        <div class="dual-col">
-          <h3>Gemini</h3>
-          <div id="gemini-checkpoints-content" class="placeholder-panel">불러오는 중...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="sequence-modal" class="modal-overlay hidden">
-    <div class="modal-box narrow">
-      <div class="modal-header">
-        <h2>시퀀스 생성</h2>
-        <button id="close-sequence-modal" class="modal-close" aria-label="닫기">&times;</button>
-      </div>
-      <div id="sequence-image-dropzone" class="image-dropzone" tabindex="0">
-        <span id="sequence-image-placeholder" class="dropzone-placeholder">시퀀스 목록 스크린샷을 Ctrl+V로 붙여넣기</span>
-        <div id="sequence-image-preview" class="image-thumb-row"></div>
-      </div>
-      <div class="actions-row">
-        <button id="generate-sequence-btn" class="primary" style="width: 100%;">생성해서 삽입</button>
-      </div>
-      <div class="status-msg" id="sequence-modal-status"></div>
+    <div id="tab-rules" class="tab-panel hidden">
+      <p class="rules-desc">교정(Correction) 완료 후 자동으로 적용되는 찾기/바꾸기 규칙입니다. 예: Left → Lt.</p>
+      <div id="rules-list"></div>
+      <button id="add-rule-btn" style="width: 100%; margin-top: 8px;">+ 새 규칙</button>
+      <div class="status-msg" id="rules-status"></div>
     </div>
   </div>
 
   <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-box narrow">
+    <div class="modal-box">
       <div class="modal-header">
         <h2>설정</h2>
         <button id="close-settings-modal" class="modal-close" aria-label="닫기">&times;</button>
       </div>
       <div class="settings-field">
-        <label for="anthropic-key-input">Anthropic API Key</label>
+        <label for="openai-key-input">OpenAI API Key (전사용)</label>
+        <input type="password" id="openai-key-input" placeholder="sk-..." />
+      </div>
+      <div class="settings-field">
+        <label for="anthropic-key-input">Anthropic API Key (교정용)</label>
         <input type="password" id="anthropic-key-input" placeholder="sk-ant-..." />
       </div>
       <div class="settings-field">
-        <label for="gemini-key-input">Gemini API Key</label>
-        <input type="password" id="gemini-key-input" placeholder="AIza..." />
+        <label for="custom-terms-input">자주 쓰는 용어 (전사·교정 시 참고)</label>
+        <textarea id="custom-terms-input" placeholder="쉼표로 구분: annular tear, hyperintensity, ..."></textarea>
       </div>
-      <div class="settings-note">이 브라우저에만 저장되며, Anthropic/Google API로만 직접 전송됩니다 (다른 서버 경유 없음).</div>
+      <div class="settings-note">이 브라우저에만 저장되며, OpenAI/Anthropic API로만 직접 전송됩니다.</div>
       <button id="save-settings-btn" class="primary" style="width: 100%;">저장</button>
       <div class="status-msg" id="settings-modal-status"></div>
     </div>
   </div>
 
-  <script type="module" src="js/report-view.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

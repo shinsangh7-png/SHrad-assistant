@@ -1,5 +1,4 @@
 const KEYS = {
-  templates: "sh-rad.templates",
   rules: "sh-rad.rules",
   settings: "sh-rad.settings",
 };
@@ -21,46 +20,13 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function nowIso() {
-  return new Date().toISOString();
-}
-
 export const storage = {
-  // --- Settings (API keys) ---
+  // --- Settings (API keys + custom term list) ---
   getSettings() {
-    return readJson(KEYS.settings, { anthropicApiKey: "", geminiApiKey: "" });
+    return readJson(KEYS.settings, { openaiApiKey: "", anthropicApiKey: "", customTerms: "" });
   },
   saveSettings(settings) {
     writeJson(KEYS.settings, settings);
-  },
-
-  // --- Templates ---
-  listTemplates() {
-    return readJson(KEYS.templates, []);
-  },
-  listTemplatesByRegion(modality, bodyRegion) {
-    const all = this.listTemplates();
-    return all.filter(
-      (t) => t.modality === modality && (t.body_region === bodyRegion || t.body_region === "All")
-    );
-  },
-  saveTemplate(template) {
-    const all = this.listTemplates();
-    if (template.id) {
-      const idx = all.findIndex((t) => t.id === template.id);
-      const updated = { ...all[idx], ...template, updated_at: nowIso() };
-      all[idx] = updated;
-      writeJson(KEYS.templates, all);
-      return updated;
-    }
-    const created = { ...template, id: uid(), created_at: nowIso(), updated_at: nowIso() };
-    all.push(created);
-    writeJson(KEYS.templates, all);
-    return created;
-  },
-  deleteTemplate(id) {
-    const all = this.listTemplates().filter((t) => t.id !== id);
-    writeJson(KEYS.templates, all);
   },
 
   // --- Post-processing rules ---
@@ -84,35 +50,6 @@ export const storage = {
   deleteRule(id) {
     const all = this.listRules().filter((r) => r.id !== id);
     writeJson(KEYS.rules, all);
-  },
-
-  // --- Export / Import (manual cross-machine transfer) ---
-  exportData() {
-    return {
-      templates: this.listTemplates(),
-      rules: this.listRules(),
-      exported_at: nowIso(),
-    };
-  },
-  importData(data, { merge = true } = {}) {
-    if (merge) {
-      const templates = this.listTemplates();
-      const existingIds = new Set(templates.map((t) => t.id));
-      (data.templates || []).forEach((t) => {
-        if (!existingIds.has(t.id)) templates.push(t);
-      });
-      writeJson(KEYS.templates, templates);
-
-      const rules = this.listRules();
-      const existingRuleIds = new Set(rules.map((r) => r.id));
-      (data.rules || []).forEach((r) => {
-        if (!existingRuleIds.has(r.id)) rules.push(r);
-      });
-      writeJson(KEYS.rules, rules);
-    } else {
-      writeJson(KEYS.templates, data.templates || []);
-      writeJson(KEYS.rules, data.rules || []);
-    }
   },
 };
 
