@@ -1,11 +1,13 @@
 import { storage, applyPostprocessingRules } from "./storage.js";
-import { correctGrammar } from "./anthropic-client.js";
+import { correctGrammar, getCheckpoints } from "./anthropic-client.js";
 import { Dictation } from "./dictation.js";
 import { insertAtCursor } from "./cursor-insert.js";
 
 const transcriptText = document.getElementById("transcript-text");
 const startBtn = document.getElementById("start-btn");
 const correctBtn = document.getElementById("correct-btn");
+const checkBtn = document.getElementById("check-btn");
+const resetBtn = document.getElementById("reset-btn");
 const micStatus = document.getElementById("mic-status");
 
 function setMicStatus(msg, isError = false) {
@@ -101,6 +103,70 @@ correctBtn.addEventListener("click", async () => {
   } finally {
     correctBtn.disabled = false;
   }
+});
+
+// --- Reset ---
+resetBtn.addEventListener("mousedown", (e) => e.preventDefault());
+resetBtn.addEventListener("click", () => {
+  transcriptText.value = "";
+  transcriptText.focus();
+  setMicStatus("초기화됨");
+});
+
+// --- Check (differential diagnosis / checkpoints) ---
+const checkModal = document.getElementById("check-modal");
+const checkDdxList = document.getElementById("check-ddx-list");
+const checkPointsList = document.getElementById("check-points-list");
+const checkModalStatus = document.getElementById("check-modal-status");
+
+function renderCheckList(el, items) {
+  el.innerHTML = "";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.className = "check-list-empty";
+    li.textContent = "해당 없음";
+    el.appendChild(li);
+    return;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    el.appendChild(li);
+  });
+}
+
+function closeCheckModal() {
+  checkModal.classList.add("hidden");
+}
+
+checkBtn.addEventListener("mousedown", (e) => e.preventDefault());
+checkBtn.addEventListener("click", async () => {
+  if (!transcriptText.value.trim()) {
+    setMicStatus("확인할 내용이 없습니다.", true);
+    return;
+  }
+  checkBtn.disabled = true;
+  checkDdxList.innerHTML = "";
+  checkPointsList.innerHTML = "";
+  checkModalStatus.textContent = "불러오는 중...";
+  checkModalStatus.style.color = "var(--muted)";
+  checkModal.classList.remove("hidden");
+  try {
+    const { differentials, checkpoints } = await getCheckpoints(transcriptText.value);
+    renderCheckList(checkDdxList, differentials);
+    renderCheckList(checkPointsList, checkpoints);
+    checkModalStatus.textContent = "";
+  } catch (e) {
+    checkModalStatus.textContent = e.message || String(e);
+    checkModalStatus.style.color = "var(--danger)";
+  } finally {
+    checkBtn.disabled = false;
+  }
+});
+
+document.getElementById("close-check-modal").addEventListener("click", closeCheckModal);
+checkModal.addEventListener("click", (e) => {
+  if (e.target.id === "check-modal") closeCheckModal();
 });
 
 // --- Post-processing rules tab ---

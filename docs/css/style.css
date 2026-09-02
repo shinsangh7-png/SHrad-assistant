@@ -272,6 +272,57 @@ button:disabled {
   min-height: 14px;
 }
 
+.action-row {
+  display: flex;
+  gap: 6px;
+}
+
+.action-main {
+  flex: 1;
+}
+
+.action-sm {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  font-size: 12px;
+}
+
+.check-section {
+  margin-bottom: 12px;
+}
+
+.check-section-title {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 5px;
+}
+
+.check-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.check-list li {
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 6px 9px;
+  background: var(--accent-pale);
+  border-radius: var(--radius-sm);
+}
+
+.check-list li.check-list-empty {
+  color: var(--muted);
+  background: var(--bg);
+  font-size: 12px;
+}
+
 .rules-desc {
   font-size: 11px;
   color: var(--muted);

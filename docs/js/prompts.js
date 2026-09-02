@@ -65,3 +65,22 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "no explanation of changes."
   );
 }
+
+export function checkPointSystemPrompt() {
+  return (
+    "You are assisting an experienced radiologist reviewing their own draft report before " +
+    "finalizing it. The draft may be rough, incomplete, or dictation-style shorthand.\n\n" +
+    "Given the draft, suggest:\n" +
+    "1. Up to 3 differential diagnoses worth considering for the findings described. Only " +
+    "include this if the findings actually raise a meaningful differential — return an empty " +
+    "list if the findings are clearly benign/normal, already state a single clear diagnosis, " +
+    "or are too nonspecific for a differential to be useful.\n" +
+    "2. Up to 3 clinically relevant checkpoints — things worth double-checking, related findings " +
+    "to look for elsewhere in the study, or follow-up recommendations that would strengthen the " +
+    "report given what's already described.\n\n" +
+    "Each item should be a short phrase (a few words), not a sentence or paragraph. This is a " +
+    "quick second-opinion aid for an experienced radiologist, not a teaching explanation — skip " +
+    "anything obvious, generic, or already stated in the report. If a section genuinely has " +
+    "nothing worth flagging, return an empty list for it rather than inventing filler."
+  );
+}
