@@ -1,9 +1,29 @@
 import { storage } from "./storage.js";
 
-const SILENCE_RMS_THRESHOLD = 0.02;
+const BASE_SILENCE_RMS_THRESHOLD = 0.02;
+const NOISE_FLOOR_MULTIPLIER = 3;
+const NOISE_FLOOR_MARGIN = 0.01;
+const CALIBRATION_MS = 400;
 const SILENCE_DURATION_MS = 700;
 const MAX_SEGMENT_MS = 15000;
 const MIN_SEGMENT_MS = 300;
+const MIN_SPEECH_CONFIRM_MS = 150;
+const MIN_SPEECH_ACTIVE_MS = 400;
+const MAX_TERMS_PROMPT_CHARS = 300;
+const MAX_PLAUSIBLE_WORDS_PER_SEC = 4.5;
+const SUSPECT_WORD_MARGIN = 3;
+
+// gpt-4o-transcribe never returns "no speech" for non-speech audio — it fabricates a
+// plausible-sounding sentence instead (confirmed by feeding it pure noise: it invented
+// full clinical findings, drawing vocabulary straight from the `prompt` hint). Capping
+// how much of the custom-terms list goes into the prompt limits how much clinically
+// specific content a hallucination on noise/silence can draw on.
+function truncateTermsForPrompt(str, maxChars) {
+  if (str.length <= maxChars) return str;
+  const cut = str.slice(0, maxChars);
+  const lastComma = cut.lastIndexOf(",");
+  return (lastComma > 0 ? cut.slice(0, lastComma) : cut).trim();
+}
 
 async function transcribeAudio(blob) {
   const settings = storage.getSettings();
@@ -14,7 +34,9 @@ async function transcribeAudio(blob) {
   formData.append("file", blob, "audio.webm");
   formData.append("model", "gpt-4o-transcribe");
   formData.append("language", "en");
-  const termsHint = settings.customTerms?.trim() ? ` Known terms: ${settings.customTerms.trim()}.` : "";
+  const rawTerms = settings.customTerms?.trim() || "";
+  const cappedTerms = truncateTermsForPrompt(rawTerms, MAX_TERMS_PROMPT_CHARS);
+  const termsHint = cappedTerms ? ` Known terms: ${cappedTerms}.` : "";
   formData.append(
     "prompt",
     `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`
@@ -33,10 +55,16 @@ async function transcribeAudio(blob) {
   return data.text || "";
 }
 
-// Records the mic via MediaRecorder, using simple volume-based voice-activity detection to cut
+// Records the mic via MediaRecorder, using volume-based voice-activity detection to cut
 // the audio into one segment per utterance (segment ends after ~700ms of silence, or after a
 // safety max duration), sending each segment to OpenAI's transcription API as soon as it ends —
 // giving turn-by-turn dictation without needing the whole recording to finish first.
+//
+// Two defenses against the STT model hallucinating on non-speech audio (confirmed behavior,
+// not hypothetical — see dictation.js history): (1) an adaptive noise floor calibrated at
+// start(), plus a minimum sustained-above-threshold duration before a sound counts as speech
+// at all, so brief noise blips never trigger a segment; (2) a post-hoc plausibility check that
+// flags a transcript when it's far too long for how little confirmed speech time produced it.
 export class Dictation {
   constructor({ onTranscript, onStatus, onError }) {
     this.onTranscript = onTranscript;
@@ -48,9 +76,13 @@ export class Dictation {
     this.analyser = null;
     this.mediaRecorder = null;
     this.chunks = [];
+    this.threshold = BASE_SILENCE_RMS_THRESHOLD;
     this.isSpeaking = false;
+    this.aboveThresholdMs = 0;
+    this.speechActiveMs = 0;
     this.silenceStart = null;
     this.segmentStart = null;
+    this.lastFrameTime = null;
     this.rafId = null;
   }
 
@@ -62,6 +94,11 @@ export class Dictation {
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 2048;
     source.connect(this.analyser);
+
+    this.onStatus?.("calibrating");
+    const noiseFloor = await this._calibrateNoiseFloor();
+    this.threshold = Math.max(BASE_SILENCE_RMS_THRESHOLD, noiseFloor * NOISE_FLOOR_MULTIPLIER + NOISE_FLOOR_MARGIN);
+
     this.running = true;
     this._startNewSegment();
     this._loop();
@@ -78,6 +115,35 @@ export class Dictation {
     this.onStatus?.("stopped");
   }
 
+  async _calibrateNoiseFloor() {
+    const samples = [];
+    const start = performance.now();
+    await new Promise((resolve) => {
+      const sample = () => {
+        samples.push(this._readRms());
+        if (performance.now() - start < CALIBRATION_MS) {
+          requestAnimationFrame(sample);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(sample);
+    });
+    samples.sort((a, b) => a - b);
+    return samples[Math.floor(samples.length / 2)] || 0;
+  }
+
+  _readRms() {
+    const data = new Uint8Array(this.analyser.fftSize);
+    this.analyser.getByteTimeDomainData(data);
+    let sumSquares = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = (data[i] - 128) / 128;
+      sumSquares += v * v;
+    }
+    return Math.sqrt(sumSquares / data.length);
+  }
+
   _startNewSegment() {
     this.chunks = [];
     this.mediaRecorder = new MediaRecorder(this.stream);
@@ -86,18 +152,22 @@ export class Dictation {
     };
     this.mediaRecorder.start();
     this.segmentStart = performance.now();
+    this.lastFrameTime = this.segmentStart;
     this.isSpeaking = false;
+    this.aboveThresholdMs = 0;
+    this.speechActiveMs = 0;
     this.silenceStart = null;
   }
 
   _finishSegment() {
     if (!this.mediaRecorder || this.mediaRecorder.state === "inactive") return;
     const chunks = this.chunks;
-    const hadSpeech = this.isSpeaking;
+    const hadEnoughSpeech = this.speechActiveMs >= MIN_SPEECH_ACTIVE_MS;
+    const speechActiveMs = this.speechActiveMs;
     this.mediaRecorder.onstop = () => {
-      if (hadSpeech) {
+      if (hadEnoughSpeech) {
         const blob = new Blob(chunks, { type: "audio/webm" });
-        if (blob.size > 800) this._sendForTranscription(blob);
+        if (blob.size > 800) this._sendForTranscription(blob, speechActiveMs);
       }
       if (this.running) this._startNewSegment();
     };
@@ -106,24 +176,27 @@ export class Dictation {
 
   _loop() {
     if (!this.running) return;
-    const data = new Uint8Array(this.analyser.fftSize);
-    this.analyser.getByteTimeDomainData(data);
-    let sumSquares = 0;
-    for (let i = 0; i < data.length; i++) {
-      const v = (data[i] - 128) / 128;
-      sumSquares += v * v;
-    }
-    const rms = Math.sqrt(sumSquares / data.length);
     const now = performance.now();
+    const dt = now - this.lastFrameTime;
+    this.lastFrameTime = now;
+
+    const rms = this._readRms();
     const elapsed = now - this.segmentStart;
 
-    if (rms > SILENCE_RMS_THRESHOLD) {
-      this.isSpeaking = true;
+    if (rms > this.threshold) {
+      this.aboveThresholdMs += dt;
       this.silenceStart = null;
-    } else if (this.isSpeaking) {
-      if (this.silenceStart === null) this.silenceStart = now;
-      if (now - this.silenceStart > SILENCE_DURATION_MS && elapsed > MIN_SEGMENT_MS) {
-        this._finishSegment();
+      if (!this.isSpeaking && this.aboveThresholdMs >= MIN_SPEECH_CONFIRM_MS) {
+        this.isSpeaking = true;
+      }
+      if (this.isSpeaking) this.speechActiveMs += dt;
+    } else {
+      this.aboveThresholdMs = 0;
+      if (this.isSpeaking) {
+        if (this.silenceStart === null) this.silenceStart = now;
+        if (now - this.silenceStart > SILENCE_DURATION_MS && elapsed > MIN_SEGMENT_MS) {
+          this._finishSegment();
+        }
       }
     }
 
@@ -134,11 +207,21 @@ export class Dictation {
     this.rafId = requestAnimationFrame(() => this._loop());
   }
 
-  async _sendForTranscription(blob) {
+  async _sendForTranscription(blob, speechActiveMs) {
     this.onStatus?.("transcribing");
     try {
       const text = await transcribeAudio(blob);
-      if (text.trim()) this.onTranscript?.(text.trim());
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      const wordCount = trimmed.split(/\s+/).length;
+      const maxPlausibleWords = Math.ceil((speechActiveMs / 1000) * MAX_PLAUSIBLE_WORDS_PER_SEC) + SUSPECT_WORD_MARGIN;
+      if (wordCount > maxPlausibleWords) {
+        this.onTranscript?.(`[⚠ 확인필요: ${trimmed}]`);
+        this.onError?.("말한 길이에 비해 인식된 문장이 너무 깁니다 — 오인식(환청) 가능성, 확인해주세요.");
+      } else {
+        this.onTranscript?.(trimmed);
+      }
     } catch (e) {
       this.onError?.(e.message || String(e));
     } finally {

@@ -29,7 +29,8 @@ let isRecording = false;
 const dictation = new Dictation({
   onTranscript: (text) => insertAtCursor(transcriptText, text),
   onStatus: (state) => {
-    if (state === "listening") setMicStatus("듣는 중...");
+    if (state === "calibrating") setMicStatus("환경음 측정 중...");
+    else if (state === "listening") setMicStatus("듣는 중...");
     else if (state === "transcribing") setMicStatus("전사 중...");
     else setMicStatus("");
   },
