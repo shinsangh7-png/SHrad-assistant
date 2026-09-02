@@ -13,6 +13,15 @@ const MAX_TERMS_PROMPT_CHARS = 300;
 const MAX_PLAUSIBLE_WORDS_PER_SEC = 4.5;
 const SUSPECT_WORD_MARGIN = 3;
 
+// Hangul, Hiragana/Katakana, CJK ideographs -- none belong in an English-only transcript.
+// gpt-4o-transcribe occasionally renders a jargon word/phrase in one of these scripts even
+// with language=en and an English prompt set (confirmed happening on real dictation; not
+// reproducible with synthetic TTS audio in this environment, so the trigger is presumably
+// something about real speech -- accent, mic, prosody -- that clean TTS doesn't have). Since
+// the same input doesn't fail every time, retrying once resolves most occurrences.
+const NON_LATIN_SCRIPT_RE = /[぀-ヿ가-힣一-鿿]/;
+const MAX_LANGUAGE_LOCK_ATTEMPTS = 2;
+
 // gpt-4o-transcribe never returns "no speech" for non-speech audio — it fabricates a
 // plausible-sounding sentence instead (confirmed by feeding it pure noise: it invented
 // full clinical findings, drawing vocabulary straight from the `prompt` hint). Capping
@@ -25,22 +34,12 @@ function truncateTermsForPrompt(str, maxChars) {
   return (lastComma > 0 ? cut.slice(0, lastComma) : cut).trim();
 }
 
-async function transcribeAudio(blob) {
-  const settings = storage.getSettings();
-  const apiKey = settings.openaiApiKey;
-  if (!apiKey) throw new Error("OpenAI API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
-
+async function callTranscriptionApi(blob, apiKey, prompt) {
   const formData = new FormData();
   formData.append("file", blob, "audio.webm");
   formData.append("model", "gpt-4o-transcribe");
   formData.append("language", "en");
-  const rawTerms = settings.customTerms?.trim() || "";
-  const cappedTerms = truncateTermsForPrompt(rawTerms, MAX_TERMS_PROMPT_CHARS);
-  const termsHint = cappedTerms ? ` Known terms: ${cappedTerms}.` : "";
-  formData.append(
-    "prompt",
-    `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`
-  );
+  formData.append("prompt", prompt);
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -53,6 +52,24 @@ async function transcribeAudio(blob) {
   }
   const data = await res.json();
   return data.text || "";
+}
+
+async function transcribeAudio(blob) {
+  const settings = storage.getSettings();
+  const apiKey = settings.openaiApiKey;
+  if (!apiKey) throw new Error("OpenAI API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+
+  const rawTerms = settings.customTerms?.trim() || "";
+  const cappedTerms = truncateTermsForPrompt(rawTerms, MAX_TERMS_PROMPT_CHARS);
+  const termsHint = cappedTerms ? ` Known terms: ${cappedTerms}.` : "";
+  const prompt = `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`;
+
+  let text = "";
+  for (let attempt = 1; attempt <= MAX_LANGUAGE_LOCK_ATTEMPTS; attempt++) {
+    text = await callTranscriptionApi(blob, apiKey, prompt);
+    if (!NON_LATIN_SCRIPT_RE.test(text)) return text;
+  }
+  return text;
 }
 
 // Records the mic via MediaRecorder, using volume-based voice-activity detection to cut
@@ -213,6 +230,12 @@ export class Dictation {
       const text = await transcribeAudio(blob);
       const trimmed = text.trim();
       if (!trimmed) return;
+
+      if (NON_LATIN_SCRIPT_RE.test(trimmed)) {
+        this.onTranscript?.(`[⚠ 확인필요: ${trimmed}]`);
+        this.onError?.("영어가 아닌 문자로 인식되었습니다 — 다시 말씀해주세요.");
+        return;
+      }
 
       const wordCount = trimmed.split(/\s+/).length;
       const maxPlausibleWords = Math.ceil((speechActiveMs / 1000) * MAX_PLAUSIBLE_WORDS_PER_SEC) + SUSPECT_WORD_MARGIN;
