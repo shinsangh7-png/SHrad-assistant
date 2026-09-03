@@ -34,12 +34,10 @@ function convertSpokenNewline(text) {
   return text.replace(/\benter\b/gi, "\n");
 }
 
-// --- Tabs ---
-document.querySelectorAll(".tab-btn").forEach((btn) => {
+// --- Tabs (plain nav buttons: "규칙" to go to the rules screen, "← 전사" to come back) ---
+document.querySelectorAll("[data-tab]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.add("hidden"));
-    btn.classList.add("active");
     document.getElementById(btn.dataset.tab).classList.remove("hidden");
   });
 });

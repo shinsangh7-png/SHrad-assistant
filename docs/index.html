@@ -13,38 +13,35 @@
 </head>
 <body>
   <div class="app">
-    <div class="side-col">
-      <button id="start-btn" class="mic-btn" title="전사 시작 / 구간 나누기 (F6), 정지는 클릭">
-        <span class="rec-dot"></span>
-        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0H3a9 9 0 0 0 8 8.94V22h2v-2.06A9 9 0 0 0 21 11h-2z"/></svg>
-      </button>
-      <div class="tabs">
-        <button type="button" class="tab-btn active" data-tab="tab-transcribe">전사</button>
-        <button type="button" class="tab-btn" data-tab="tab-rules">후처리<br />규칙</button>
+    <div id="tab-transcribe" class="tab-panel">
+      <div class="textarea-wrap">
+        <textarea id="transcript-text" placeholder="F6을 눌러 전사를 시작하세요."></textarea>
+        <span class="status-msg mic-status-overlay" id="mic-status"></span>
+        <div class="textarea-controls">
+          <button id="start-btn" class="mic-btn" title="전사 시작 / 구간 나누기 (F6), 정지는 클릭">
+            <span class="rec-dot"></span>
+            <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0H3a9 9 0 0 0 8 8.94V22h2v-2.06A9 9 0 0 0 21 11h-2z"/></svg>
+          </button>
+          <button id="settings-btn" class="icon-btn" title="설정">⚙</button>
+        </div>
       </div>
-      <button id="settings-btn" class="icon-btn" title="설정">⚙</button>
+
+      <div class="action-row">
+        <button class="action-sm" data-tab="tab-rules">규칙</button>
+        <button id="correct-btn" class="primary action-sm">Correction</button>
+        <button id="check-btn" class="action-sm" title="감별진단 및 체크포인트 확인">Check</button>
+        <button id="reset-btn" class="action-sm" title="내용 지우기">Reset</button>
+      </div>
     </div>
 
-    <div class="main-col">
-      <div id="tab-transcribe" class="tab-panel">
-        <div class="textarea-wrap">
-          <textarea id="transcript-text" placeholder="F6을 눌러 전사를 시작하세요."></textarea>
-          <span class="status-msg mic-status-overlay" id="mic-status"></span>
-        </div>
-
-        <div class="action-row">
-          <button id="correct-btn" class="primary action-main">Correction</button>
-          <button id="check-btn" class="action-sm" title="감별진단 및 체크포인트 확인">Check</button>
-          <button id="reset-btn" class="action-sm" title="내용 지우기">Reset</button>
-        </div>
+    <div id="tab-rules" class="tab-panel hidden">
+      <div class="rules-header">
+        <button class="action-sm" data-tab="tab-transcribe">← 전사</button>
       </div>
-
-      <div id="tab-rules" class="tab-panel hidden">
-        <p class="rules-desc">교정(Correction) 완료 후 자동으로 적용되는 찾기/바꾸기 규칙입니다. 예: Left → Lt.</p>
-        <div id="rules-list"></div>
-        <button id="add-rule-btn" style="width: 100%; margin-top: 8px;">+ 새 규칙</button>
-        <div class="status-msg" id="rules-status"></div>
-      </div>
+      <p class="rules-desc">교정(Correction) 완료 후 자동으로 적용되는 찾기/바꾸기 규칙입니다. 예: Left → Lt.</p>
+      <div id="rules-list"></div>
+      <button id="add-rule-btn" style="width: 100%; margin-top: 8px;">+ 새 규칙</button>
+      <div class="status-msg" id="rules-status"></div>
     </div>
   </div>
 
