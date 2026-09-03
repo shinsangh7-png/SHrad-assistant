@@ -21,6 +21,30 @@
   --font-serif: "Frank Ruhl Libre", Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
 }
 
+body.theme-gray {
+  --accent: #b0b0b8;
+  --accent-hover: #9a9aa4;
+  --accent-soft: #eceef0;
+  --accent-pale: #f7f8f9;
+  --accent-strong: #5b5b66;
+}
+
+body.theme-blue {
+  --accent: #a9c9e0;
+  --accent-hover: #93b8d4;
+  --accent-soft: #e6f0f7;
+  --accent-pale: #f5fafd;
+  --accent-strong: #4a7a9e;
+}
+
+body.theme-coral {
+  --accent: #f3a58f;
+  --accent-hover: #ec8c72;
+  --accent-soft: #fce8e1;
+  --accent-pale: #fdf6f3;
+  --accent-strong: #d1613f;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -47,23 +71,14 @@ body {
 header.topbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
-}
-
-header.topbar h1 {
-  font-family: var(--font-serif);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0;
-  color: var(--accent-strong);
 }
 
 .tabs {
   display: flex;
   gap: 2px;
-  margin-left: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 2px;

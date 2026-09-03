@@ -279,11 +279,23 @@ const anthropicKeyInput = document.getElementById("anthropic-key-input");
 const customTermsInput = document.getElementById("custom-terms-input");
 const hotkeyInput = document.getElementById("hotkey-input");
 const sttModelSelect = document.getElementById("stt-model-select");
+const themeSelect = document.getElementById("theme-select");
 const settingsStatus = document.getElementById("settings-modal-status");
 
 hotkeyInput.addEventListener("keydown", (e) => {
   e.preventDefault();
   hotkeyInput.value = normalizeKey(e.key);
+});
+
+const THEME_CLASSES = ["theme-gray", "theme-blue", "theme-coral"];
+function applyTheme(theme) {
+  document.body.classList.remove(...THEME_CLASSES);
+  const cls = `theme-${theme}`;
+  if (THEME_CLASSES.includes(cls)) document.body.classList.add(cls);
+}
+themeSelect.addEventListener("change", () => {
+  applyTheme(themeSelect.value);
+  storage.saveSettings({ ...storage.getSettings(), theme: themeSelect.value });
 });
 
 function openSettingsModal() {
@@ -293,6 +305,7 @@ function openSettingsModal() {
   customTermsInput.value = s.customTerms || "";
   hotkeyInput.value = s.hotkey || "F6";
   sttModelSelect.value = s.sttModel || "gpt-4o-transcribe";
+  themeSelect.value = s.theme || "pink";
   settingsStatus.textContent = "";
   settingsModal.classList.remove("hidden");
 }
@@ -312,6 +325,7 @@ document.getElementById("save-settings-btn").addEventListener("click", () => {
     customTerms: customTermsInput.value.trim(),
     hotkey: hotkeyInput.value.trim() || "F6",
     sttModel: sttModelSelect.value,
+    theme: themeSelect.value,
   });
   setDictationHotkey(hotkeyInput.value.trim() || "F6");
   settingsStatus.textContent = "저장됨";
@@ -322,5 +336,6 @@ document.getElementById("save-settings-btn").addEventListener("click", () => {
 // --- Init ---
 {
   const s = storage.getSettings();
+  applyTheme(s.theme || "pink");
   if (!s.openaiApiKey && !s.anthropicApiKey) openSettingsModal();
 }

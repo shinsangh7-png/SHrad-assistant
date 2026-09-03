@@ -29,6 +29,7 @@ export const storage = {
       customTerms: "",
       hotkey: "F6",
       sttModel: "gpt-4o-transcribe",
+      theme: "pink",
     });
   },
   saveSettings(settings) {

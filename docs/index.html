@@ -14,7 +14,6 @@
 <body>
   <div class="app">
     <header class="topbar">
-      <h1>SH Rad</h1>
       <div class="tabs">
         <button type="button" class="tab-btn active" data-tab="tab-transcribe">전사</button>
         <button type="button" class="tab-btn" data-tab="tab-rules">후처리 규칙</button>
@@ -54,6 +53,15 @@
       <div class="modal-header">
         <h2>설정</h2>
         <button id="close-settings-modal" class="modal-close" aria-label="닫기">&times;</button>
+      </div>
+      <div class="settings-field">
+        <label for="theme-select">색상 테마</label>
+        <select id="theme-select">
+          <option value="pink">핑크 (기본)</option>
+          <option value="gray">그레이</option>
+          <option value="blue">파우더 블루</option>
+          <option value="coral">코랄</option>
+        </select>
       </div>
       <div class="settings-field">
         <label for="openai-key-input">OpenAI API Key (전사용)</label>
