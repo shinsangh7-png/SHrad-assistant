@@ -26,6 +26,14 @@ function stripAutoPunctuation(text) {
   return t;
 }
 
+// Spoken "enter" becomes a real line break. Added because Enter/Space can't be used as the
+// dictation hotkey (they're needed for normal typing), so a line-break command has to be
+// spoken instead -- and this has to happen at insert time, not deferred to Correction, since
+// Correction is slow enough that the user often skips it entirely.
+function convertSpokenNewline(text) {
+  return text.replace(/\benter\b/gi, "\n");
+}
+
 // --- Tabs ---
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -40,7 +48,8 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 let isRecording = false;
 
 const dictation = new Dictation({
-  onTranscript: (text) => insertAtCursor(transcriptText, applyPostprocessingRules(stripAutoPunctuation(text))),
+  onTranscript: (text) =>
+    insertAtCursor(transcriptText, convertSpokenNewline(applyPostprocessingRules(stripAutoPunctuation(text)))),
   onStatus: (state) => {
     if (state === "listening") setMicStatus("듣는 중...");
     else if (state === "transcribing") setMicStatus("전사 중...");
