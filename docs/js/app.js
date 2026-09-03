@@ -15,6 +15,17 @@ function setMicStatus(msg, isError = false) {
   micStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
 }
 
+// The STT model auto-punctuates each segment (capital first letter, trailing period) based on
+// its own guess at sentence boundaries -- but a segment is just wherever the silence timer or a
+// manual F6 cut happened to land, not necessarily where the radiologist's sentence actually
+// ends. Strip that per-segment guess on the way in; Correction re-adds real sentence
+// capitalization/periods afterward using the full text as context.
+function stripAutoPunctuation(text) {
+  let t = text.replace(/[.!?]+\s*$/, "");
+  if (t.length > 0) t = t.charAt(0).toLowerCase() + t.slice(1);
+  return t;
+}
+
 // --- Tabs ---
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -29,7 +40,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 let isRecording = false;
 
 const dictation = new Dictation({
-  onTranscript: (text) => insertAtCursor(transcriptText, text),
+  onTranscript: (text) => insertAtCursor(transcriptText, stripAutoPunctuation(text)),
   onStatus: (state) => {
     if (state === "calibrating") setMicStatus("환경음 측정 중...");
     else if (state === "listening") setMicStatus("듣는 중...");
@@ -71,13 +82,26 @@ function toggleRecording() {
 startBtn.addEventListener("mousedown", (e) => e.preventDefault());
 startBtn.addEventListener("click", toggleRecording);
 
-// F6 is meant to be tapped often, mid-sentence, to mark where one phrase ends and the next
-// begins -- so while already recording it just cuts the current segment off and sends it,
-// without stopping the mic (no re-acquiring the microphone, no recalibration delay, and
-// nothing spoken right after the tap gets lost waiting for that). To actually stop dictating,
-// click the mic button instead of using F6.
+// The dictation hotkey (default F6, user-configurable in settings) is meant to be tapped
+// often, mid-sentence, to mark where one phrase ends and the next begins -- so while already
+// recording it just cuts the current segment off and sends it, without stopping the mic (no
+// re-acquiring the microphone, no recalibration delay, and nothing spoken right after the tap
+// gets lost waiting for that). To actually stop dictating, click the mic button instead.
+let dictationHotkey = storage.getSettings().hotkey || "F6";
+const hotkeyHintKey = document.getElementById("hotkey-hint-key");
+
+function normalizeKey(key) {
+  return key === " " ? "Space" : key;
+}
+
+function setDictationHotkey(key) {
+  dictationHotkey = key;
+  hotkeyHintKey.textContent = key;
+}
+setDictationHotkey(dictationHotkey);
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "F6") {
+  if (normalizeKey(e.key) === dictationHotkey) {
     e.preventDefault();
     if (isRecording) dictation.cutNow();
     else startRecording();
@@ -245,13 +269,20 @@ const settingsModal = document.getElementById("settings-modal");
 const openaiKeyInput = document.getElementById("openai-key-input");
 const anthropicKeyInput = document.getElementById("anthropic-key-input");
 const customTermsInput = document.getElementById("custom-terms-input");
+const hotkeyInput = document.getElementById("hotkey-input");
 const settingsStatus = document.getElementById("settings-modal-status");
+
+hotkeyInput.addEventListener("keydown", (e) => {
+  e.preventDefault();
+  hotkeyInput.value = normalizeKey(e.key);
+});
 
 function openSettingsModal() {
   const s = storage.getSettings();
   openaiKeyInput.value = s.openaiApiKey || "";
   anthropicKeyInput.value = s.anthropicApiKey || "";
   customTermsInput.value = s.customTerms || "";
+  hotkeyInput.value = s.hotkey || "F6";
   settingsStatus.textContent = "";
   settingsModal.classList.remove("hidden");
 }
@@ -269,7 +300,9 @@ document.getElementById("save-settings-btn").addEventListener("click", () => {
     openaiApiKey: openaiKeyInput.value.trim(),
     anthropicApiKey: anthropicKeyInput.value.trim(),
     customTerms: customTermsInput.value.trim(),
+    hotkey: hotkeyInput.value.trim() || "F6",
   });
+  setDictationHotkey(hotkeyInput.value.trim() || "F6");
   settingsStatus.textContent = "저장됨";
   settingsStatus.style.color = "var(--muted)";
   setTimeout(closeSettingsModal, 500);

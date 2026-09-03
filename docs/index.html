@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>SH Rad</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#d6537d" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700&display=swap" rel="stylesheet" />
@@ -25,7 +28,7 @@
           <span class="rec-dot"></span>
           <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0H3a9 9 0 0 0 8 8.94V22h2v-2.06A9 9 0 0 0 21 11h-2z"/></svg>
         </button>
-        <span class="hotkey-hint"><kbd>F6</kbd> 시작 / 구간 나누기 (정지는 마이크 클릭)</span>
+        <span class="hotkey-hint"><kbd id="hotkey-hint-key">F6</kbd> 시작 / 구간 나누기 (정지는 마이크 클릭)</span>
         <span class="status-msg" id="mic-status"></span>
       </div>
 
@@ -63,6 +66,11 @@
       <div class="settings-field">
         <label for="custom-terms-input">자주 쓰는 용어 (전사·교정 시 참고)</label>
         <textarea id="custom-terms-input" placeholder="쉼표로 구분: annular tear, hyperintensity, ..."></textarea>
+      </div>
+      <div class="settings-field">
+        <label for="hotkey-input">단축키 (전사 시작 / 구간 나누기)</label>
+        <input type="text" id="hotkey-input" placeholder="F6" readonly />
+        <div class="settings-note" style="margin-top: 4px;">클릭 후 원하는 키를 누르세요. F1~F12 등 기능키를 추천합니다 (일반 타이핑과 안 겹침).</div>
       </div>
       <div class="settings-note">이 브라우저에만 저장되며, OpenAI/Anthropic API로만 직접 전송됩니다.</div>
       <button id="save-settings-btn" class="primary" style="width: 100%;">저장</button>
