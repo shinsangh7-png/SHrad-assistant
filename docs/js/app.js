@@ -94,7 +94,6 @@ startBtn.addEventListener("click", toggleRecording);
 // re-acquiring the microphone, no recalibration delay, and nothing spoken right after the tap
 // gets lost waiting for that). To actually stop dictating, click the mic button instead.
 let dictationHotkey = storage.getSettings().hotkey || "F6";
-const hotkeyHintKey = document.getElementById("hotkey-hint-key");
 
 function normalizeKey(key) {
   return key === " " ? "Space" : key;
@@ -102,9 +101,7 @@ function normalizeKey(key) {
 
 function setDictationHotkey(key) {
   dictationHotkey = key;
-  hotkeyHintKey.textContent = key;
 }
-setDictationHotkey(dictationHotkey);
 
 document.addEventListener("keydown", (e) => {
   if (normalizeKey(e.key) === dictationHotkey) {
