@@ -67,9 +67,19 @@
       <div class="settings-field">
         <label for="stt-model-select">전사 모델</label>
         <select id="stt-model-select">
-          <option value="gpt-4o-transcribe">gpt-4o-transcribe (기본)</option>
-          <option value="whisper-1">whisper-1</option>
+          <option value="gpt-4o-transcribe">gpt-4o-transcribe (기본, OpenAI)</option>
+          <option value="whisper-1">whisper-1 (OpenAI)</option>
+          <option value="whisper-large-v3">whisper-large-v3 (Groq)</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash (Google)</option>
         </select>
+      </div>
+      <div class="settings-field">
+        <label for="gemini-key-input">Gemini API Key (전사 모델로 선택 시)</label>
+        <input type="password" id="gemini-key-input" placeholder="AIza..." />
+      </div>
+      <div class="settings-field">
+        <label for="groq-key-input">Groq API Key (전사 모델로 선택 시)</label>
+        <input type="password" id="groq-key-input" placeholder="gsk_..." />
       </div>
       <div class="settings-field">
         <label for="anthropic-key-input">Anthropic API Key (교정용)</label>

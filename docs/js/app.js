@@ -274,6 +274,8 @@ refreshRulesList();
 const settingsModal = document.getElementById("settings-modal");
 const openaiKeyInput = document.getElementById("openai-key-input");
 const anthropicKeyInput = document.getElementById("anthropic-key-input");
+const geminiKeyInput = document.getElementById("gemini-key-input");
+const groqKeyInput = document.getElementById("groq-key-input");
 const customTermsInput = document.getElementById("custom-terms-input");
 const hotkeyInput = document.getElementById("hotkey-input");
 const sttModelSelect = document.getElementById("stt-model-select");
@@ -300,6 +302,8 @@ function openSettingsModal() {
   const s = storage.getSettings();
   openaiKeyInput.value = s.openaiApiKey || "";
   anthropicKeyInput.value = s.anthropicApiKey || "";
+  geminiKeyInput.value = s.geminiApiKey || "";
+  groqKeyInput.value = s.groqApiKey || "";
   customTermsInput.value = s.customTerms || "";
   hotkeyInput.value = s.hotkey || "F6";
   sttModelSelect.value = s.sttModel || "gpt-4o-transcribe";
@@ -320,6 +324,8 @@ document.getElementById("save-settings-btn").addEventListener("click", () => {
   storage.saveSettings({
     openaiApiKey: openaiKeyInput.value.trim(),
     anthropicApiKey: anthropicKeyInput.value.trim(),
+    geminiApiKey: geminiKeyInput.value.trim(),
+    groqApiKey: groqKeyInput.value.trim(),
     customTerms: customTermsInput.value.trim(),
     hotkey: hotkeyInput.value.trim() || "F6",
     sttModel: sttModelSelect.value,

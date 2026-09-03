@@ -26,6 +26,8 @@ export const storage = {
     return readJson(KEYS.settings, {
       openaiApiKey: "",
       anthropicApiKey: "",
+      geminiApiKey: "",
+      groqApiKey: "",
       customTerms: "",
       hotkey: "F6",
       sttModel: "gpt-4o-transcribe",

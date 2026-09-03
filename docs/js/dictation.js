@@ -34,14 +34,17 @@ function truncateTermsForPrompt(str, maxChars) {
   return (lastComma > 0 ? cut.slice(0, lastComma) : cut).trim();
 }
 
-async function callTranscriptionApi(blob, apiKey, prompt, model) {
+// OpenAI's /v1/audio/transcriptions request shape, reused as-is for Groq's OpenAI-compatible
+// endpoint (same multipart fields, just a different base URL and key) -- whisper-large-v3
+// hosted by Groq is a legitimate distinct model worth comparing, not just a copy of whisper-1.
+async function callOpenAiCompatibleTranscription(blob, apiKey, prompt, model, baseUrl) {
   const formData = new FormData();
   formData.append("file", blob, "audio.webm");
   formData.append("model", model);
   formData.append("language", "en");
   formData.append("prompt", prompt);
 
-  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
@@ -54,20 +57,78 @@ async function callTranscriptionApi(blob, apiKey, prompt, model) {
   return data.text || "";
 }
 
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Gemini has no dedicated transcription endpoint -- this asks the general-purpose
+// generateContent API to transcribe audio it's given directly, which is a fundamentally
+// different mechanism (and response shape) from the OpenAI-style endpoints above.
+async function callGeminiTranscription(blob, apiKey, prompt, model) {
+  if (!apiKey) throw new Error("Gemini API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+  const base64 = await blobToBase64(blob);
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "audio/webm", data: base64 } }] }],
+      }),
+    }
+  );
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail?.error?.message || `Gemini API 오류 (HTTP ${res.status})`);
+  }
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
 async function transcribeAudio(blob) {
   const settings = storage.getSettings();
-  const apiKey = settings.openaiApiKey;
-  if (!apiKey) throw new Error("OpenAI API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+  const model = settings.sttModel || "gpt-4o-transcribe";
 
   const rawTerms = settings.customTerms?.trim() || "";
   const cappedTerms = truncateTermsForPrompt(rawTerms, MAX_TERMS_PROMPT_CHARS);
   const termsHint = cappedTerms ? ` Known terms: ${cappedTerms}.` : "";
-  const prompt = `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`;
-  const model = settings.sttModel || "gpt-4o-transcribe";
+  const basePrompt = `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`;
+
+  async function callOnce() {
+    if (model === "gemini-2.0-flash") {
+      const geminiPrompt =
+        `Transcribe the following audio recording verbatim, in English only. ${basePrompt} ` +
+        `Output only the transcription text, nothing else -- no preamble, no explanation, no markdown.`;
+      return callGeminiTranscription(blob, settings.geminiApiKey, geminiPrompt, model);
+    }
+    if (model === "whisper-large-v3") {
+      if (!settings.groqApiKey) throw new Error("Groq API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+      return callOpenAiCompatibleTranscription(
+        blob,
+        settings.groqApiKey,
+        basePrompt,
+        model,
+        "https://api.groq.com/openai/v1/audio/transcriptions"
+      );
+    }
+    if (!settings.openaiApiKey) throw new Error("OpenAI API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+    return callOpenAiCompatibleTranscription(
+      blob,
+      settings.openaiApiKey,
+      basePrompt,
+      model,
+      "https://api.openai.com/v1/audio/transcriptions"
+    );
+  }
 
   let text = "";
   for (let attempt = 1; attempt <= MAX_LANGUAGE_LOCK_ATTEMPTS; attempt++) {
-    text = await callTranscriptionApi(blob, apiKey, prompt, model);
+    text = await callOnce();
     if (!NON_LATIN_SCRIPT_RE.test(text)) return text;
   }
   return text;
