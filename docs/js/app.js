@@ -40,10 +40,9 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 let isRecording = false;
 
 const dictation = new Dictation({
-  onTranscript: (text) => insertAtCursor(transcriptText, stripAutoPunctuation(text)),
+  onTranscript: (text) => insertAtCursor(transcriptText, applyPostprocessingRules(stripAutoPunctuation(text))),
   onStatus: (state) => {
-    if (state === "calibrating") setMicStatus("환경음 측정 중...");
-    else if (state === "listening") setMicStatus("듣는 중...");
+    if (state === "listening") setMicStatus("듣는 중...");
     else if (state === "transcribing") setMicStatus("전사 중...");
     else setMicStatus("");
   },

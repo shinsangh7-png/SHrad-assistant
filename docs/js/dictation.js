@@ -113,14 +113,21 @@ export class Dictation {
     this.analyser.fftSize = 2048;
     source.connect(this.analyser);
 
-    this.onStatus?.("calibrating");
-    const noiseFloor = await this._calibrateNoiseFloor();
-    this.threshold = Math.max(BASE_SILENCE_RMS_THRESHOLD, noiseFloor * NOISE_FLOOR_MULTIPLIER + NOISE_FLOOR_MARGIN);
-
+    // Start listening immediately with the safe default threshold rather than waiting ~400ms
+    // for noise-floor calibration first -- that wait was the main cause of a noticeable delay
+    // between pressing the hotkey and the app actually starting to capture speech (and speech
+    // said during that window wasn't being recorded at all). Calibration now runs in the
+    // background and refines the threshold moments later instead of blocking the start.
+    this.threshold = BASE_SILENCE_RMS_THRESHOLD;
     this.running = true;
     this._startNewSegment();
     this._loop();
     this.onStatus?.("listening");
+
+    this._calibrateNoiseFloor().then((noiseFloor) => {
+      if (!this.running) return;
+      this.threshold = Math.max(BASE_SILENCE_RMS_THRESHOLD, noiseFloor * NOISE_FLOOR_MULTIPLIER + NOISE_FLOOR_MARGIN);
+    });
   }
 
   stop() {
