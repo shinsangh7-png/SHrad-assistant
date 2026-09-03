@@ -34,6 +34,25 @@ function convertSpokenNewline(text) {
   return text.replace(/\benter\b/gi, "\n");
 }
 
+// "L one two" -> "L1-2". Only triggers when the first number is spelled out as a word --
+// deliberately leaves any already-digit level mention (e.g. "C3/4", "L4-5") completely alone,
+// since whether a given mention should use a slash or a hyphen is contextual (this radiologist
+// uses "/" for per-level finding breakdowns but "-" in conclusion-style summaries) and that
+// nuance belongs to Correction, not an instant regex.
+const LEVEL_NUMBER_WORDS = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+  seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+};
+function convertDiscLevels(text) {
+  const words = Object.keys(LEVEL_NUMBER_WORDS).join("|");
+  const re = new RegExp(`\\b([LCTS])\\s+(${words})\\s+(${words}|\\d{1,2})\\b`, "gi");
+  return text.replace(re, (match, letter, n1, n2) => {
+    const v1 = LEVEL_NUMBER_WORDS[n1.toLowerCase()];
+    const v2 = LEVEL_NUMBER_WORDS[n2.toLowerCase()] ?? parseInt(n2, 10);
+    return `${letter.toUpperCase()}${v1}-${v2}`;
+  });
+}
+
 // --- Tabs (plain nav buttons: "규칙" to go to the rules screen, "← 전사" to come back) ---
 document.querySelectorAll("[data-tab]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -47,7 +66,10 @@ let isRecording = false;
 
 const dictation = new Dictation({
   onTranscript: (text) =>
-    insertAtCursor(transcriptText, convertSpokenNewline(applyPostprocessingRules(stripAutoPunctuation(text)))),
+    insertAtCursor(
+      transcriptText,
+      convertSpokenNewline(applyPostprocessingRules(convertDiscLevels(stripAutoPunctuation(text))))
+    ),
   onStatus: (state) => {
     if (state === "listening") setMicStatus("듣는 중...");
     else if (state === "transcribing") setMicStatus("전사 중...");
