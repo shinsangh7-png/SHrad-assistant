@@ -447,6 +447,7 @@ button:disabled {
 }
 
 .settings-field input,
+.settings-field select,
 .settings-field textarea {
   width: 100%;
 }

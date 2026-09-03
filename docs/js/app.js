@@ -270,6 +270,7 @@ const openaiKeyInput = document.getElementById("openai-key-input");
 const anthropicKeyInput = document.getElementById("anthropic-key-input");
 const customTermsInput = document.getElementById("custom-terms-input");
 const hotkeyInput = document.getElementById("hotkey-input");
+const sttModelSelect = document.getElementById("stt-model-select");
 const settingsStatus = document.getElementById("settings-modal-status");
 
 hotkeyInput.addEventListener("keydown", (e) => {
@@ -283,6 +284,7 @@ function openSettingsModal() {
   anthropicKeyInput.value = s.anthropicApiKey || "";
   customTermsInput.value = s.customTerms || "";
   hotkeyInput.value = s.hotkey || "F6";
+  sttModelSelect.value = s.sttModel || "gpt-4o-transcribe";
   settingsStatus.textContent = "";
   settingsModal.classList.remove("hidden");
 }
@@ -301,6 +303,7 @@ document.getElementById("save-settings-btn").addEventListener("click", () => {
     anthropicApiKey: anthropicKeyInput.value.trim(),
     customTerms: customTermsInput.value.trim(),
     hotkey: hotkeyInput.value.trim() || "F6",
+    sttModel: sttModelSelect.value,
   });
   setDictationHotkey(hotkeyInput.value.trim() || "F6");
   settingsStatus.textContent = "저장됨";

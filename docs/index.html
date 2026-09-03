@@ -60,6 +60,13 @@
         <input type="password" id="openai-key-input" placeholder="sk-..." />
       </div>
       <div class="settings-field">
+        <label for="stt-model-select">전사 모델</label>
+        <select id="stt-model-select">
+          <option value="gpt-4o-transcribe">gpt-4o-transcribe (기본)</option>
+          <option value="whisper-1">whisper-1</option>
+        </select>
+      </div>
+      <div class="settings-field">
         <label for="anthropic-key-input">Anthropic API Key (교정용)</label>
         <input type="password" id="anthropic-key-input" placeholder="sk-ant-..." />
       </div>

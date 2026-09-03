@@ -34,10 +34,10 @@ function truncateTermsForPrompt(str, maxChars) {
   return (lastComma > 0 ? cut.slice(0, lastComma) : cut).trim();
 }
 
-async function callTranscriptionApi(blob, apiKey, prompt) {
+async function callTranscriptionApi(blob, apiKey, prompt, model) {
   const formData = new FormData();
   formData.append("file", blob, "audio.webm");
-  formData.append("model", "gpt-4o-transcribe");
+  formData.append("model", model);
   formData.append("language", "en");
   formData.append("prompt", prompt);
 
@@ -63,10 +63,11 @@ async function transcribeAudio(blob) {
   const cappedTerms = truncateTermsForPrompt(rawTerms, MAX_TERMS_PROMPT_CHARS);
   const termsHint = cappedTerms ? ` Known terms: ${cappedTerms}.` : "";
   const prompt = `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`;
+  const model = settings.sttModel || "gpt-4o-transcribe";
 
   let text = "";
   for (let attempt = 1; attempt <= MAX_LANGUAGE_LOCK_ATTEMPTS; attempt++) {
-    text = await callTranscriptionApi(blob, apiKey, prompt);
+    text = await callTranscriptionApi(blob, apiKey, prompt, model);
     if (!NON_LATIN_SCRIPT_RE.test(text)) return text;
   }
   return text;

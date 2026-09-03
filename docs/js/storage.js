@@ -23,7 +23,13 @@ function uid() {
 export const storage = {
   // --- Settings (API keys + custom term list) ---
   getSettings() {
-    return readJson(KEYS.settings, { openaiApiKey: "", anthropicApiKey: "", customTerms: "", hotkey: "F6" });
+    return readJson(KEYS.settings, {
+      openaiApiKey: "",
+      anthropicApiKey: "",
+      customTerms: "",
+      hotkey: "F6",
+      sttModel: "gpt-4o-transcribe",
+    });
   },
   saveSettings(settings) {
     writeJson(KEYS.settings, settings);
