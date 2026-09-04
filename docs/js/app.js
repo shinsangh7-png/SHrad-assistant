@@ -298,15 +298,18 @@ document.getElementById("add-rule-btn").addEventListener("click", () => {
 refreshRulesList();
 
 // --- Normal-form templates (modality -> body part -> saved boilerplate text) ---
+// Left-click a part = insert its saved text immediately and jump back to 전사 (the common
+// case). Right-click = edit/delete via a small context menu, so managing templates never
+// gets in the way of just using them.
 const MODALITIES = ["MR", "CT", "US", "X-ray"];
-const PARTS_BY_MODALITY = {
-  MR: ["C-spine", "T-L-S-spine", "Knee", "Shoulder", "Wrist", "Ankle", "Hip", "Brain", "Elbow"],
-  CT: ["C-spine", "L-spine", "Chest", "Abdomen", "Brain", "Facial bone", "Rib"],
-  US: ["Thyroid", "Abdomen", "Carotid"],
-  "X-ray": ["Knee", "Spine", "Chest"],
-};
-
 const templateContent = document.getElementById("template-content");
+const templateContextMenu = document.getElementById("template-context-menu");
+let templateContextTarget = null;
+
+function goToTranscribeTab() {
+  document.getElementById("tab-templates").classList.add("hidden");
+  document.getElementById("tab-transcribe").classList.remove("hidden");
+}
 
 function renderTemplateModalityStep() {
   templateContent.innerHTML = "";
@@ -334,14 +337,39 @@ function renderTemplatePartStep(modality) {
 
   const grid = document.createElement("div");
   grid.className = "modality-grid";
-  (PARTS_BY_MODALITY[modality] || []).forEach((part) => {
+  storage.templates.getParts(modality).forEach((part) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "action-sm";
     btn.textContent = part;
-    btn.addEventListener("click", () => renderTemplateEditStep(modality, part));
+    btn.addEventListener("click", () => {
+      const text = storage.templates.get(modality, part);
+      if (text.trim()) insertAtCursor(transcriptText, text.trim());
+      goToTranscribeTab();
+    });
+    btn.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      templateContextTarget = { modality, part };
+      templateContextMenu.style.left = `${e.clientX}px`;
+      templateContextMenu.style.top = `${e.clientY}px`;
+      templateContextMenu.classList.remove("hidden");
+    });
     grid.appendChild(btn);
   });
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "action-sm";
+  addBtn.textContent = "+ 추가";
+  addBtn.addEventListener("click", () => {
+    const name = prompt("새 부위 이름을 입력하세요:");
+    if (name && name.trim()) {
+      storage.templates.addPart(modality, name.trim());
+      renderTemplateEditStep(modality, name.trim());
+    }
+  });
+  grid.appendChild(addBtn);
+
   templateContent.appendChild(grid);
 }
 
@@ -374,8 +402,7 @@ function renderTemplateEditStep(modality, part) {
   insertBtn.textContent = "삽입";
   insertBtn.addEventListener("click", () => {
     if (textarea.value.trim()) insertAtCursor(transcriptText, textarea.value.trim());
-    document.getElementById("tab-templates").classList.add("hidden");
-    document.getElementById("tab-transcribe").classList.remove("hidden");
+    goToTranscribeTab();
   });
 
   const saveBtn = document.createElement("button");
@@ -394,6 +421,26 @@ function renderTemplateEditStep(modality, part) {
   row.appendChild(saveBtn);
   templateContent.appendChild(row);
 }
+
+templateContextMenu.querySelector('[data-action="edit"]').addEventListener("click", () => {
+  if (!templateContextTarget) return;
+  const { modality, part } = templateContextTarget;
+  renderTemplateEditStep(modality, part);
+  templateContextMenu.classList.add("hidden");
+});
+templateContextMenu.querySelector('[data-action="delete"]').addEventListener("click", () => {
+  if (!templateContextTarget) return;
+  const { modality, part } = templateContextTarget;
+  if (confirm(`"${part}" 템플릿을 삭제하시겠습니까?`)) {
+    storage.templates.removePart(modality, part);
+    renderTemplatePartStep(modality);
+  }
+  templateContextMenu.classList.add("hidden");
+});
+document.addEventListener("click", () => templateContextMenu.classList.add("hidden"));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") templateContextMenu.classList.add("hidden");
+});
 
 document.querySelector('[data-tab="tab-templates"]').addEventListener("click", renderTemplateModalityStep);
 renderTemplateModalityStep();

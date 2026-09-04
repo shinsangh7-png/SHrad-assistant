@@ -3,6 +3,115 @@ const KEYS = {
   rulesSeededDefaults: "sh-rad.rules.seededDefaults",
   settings: "sh-rad.settings",
   templates: "sh-rad.templates",
+  templatesSeededDefaults: "sh-rad.templates.seededDefaults",
+  templateParts: "sh-rad.templateParts",
+};
+
+// Starter body-part list per modality, seeded once per modality (not globally) into
+// templateParts so the user can rename/add/remove from there afterward without it reverting.
+const STARTER_TEMPLATE_PARTS = {
+  MR: ["C-spine", "T-L-S-spine", "Knee", "Shoulder", "Wrist", "Ankle", "Hip", "Brain", "Elbow", "Hand"],
+  CT: ["C-spine", "L-spine", "Chest", "Abdomen", "Brain", "Facial bone", "Rib"],
+  US: ["Thyroid", "Abdomen", "Carotid"],
+  "X-ray": ["Knee", "Spine", "Chest"],
+};
+
+// From the user's own "ch normal.docx" -- their real normal-form boilerplate per modality/part,
+// each a per-structure checklist ending "(-)"/"intact" for normal findings. Seeded individually
+// per "modality::part" key (same pattern as DEFAULT_RULES) so it reaches this user's browser
+// even though templateParts (just the names) may have already been seeded before this existed,
+// and never overwrites a key the user has already saved something into (including on purpose
+// clearing it to empty).
+const STARTER_TEMPLATE_TEXTS = {
+  "MR::C-spine":
+    "Clinical information : Neck pain with radiating pain.\n" +
+    "Image Protocol : 3P Localizer, SAG T2, SAG T1, SAG T2 STIR, AXL T2, AXL MERGE, Obl. SAG T2 RT, Obl. SAG T2 LT\n" +
+    "[ Finding ]\n\n" +
+    "C2/3 : (-)\nC3/4 : (-)\nC4/5 : (-)\nC5/6 : (-)\nC6/7 : (-)\nC7/T1 : (-)\n\n" +
+    "Neural foraminal narrowing : (-)\nCentral canal stenosis : (-)\n\n" +
+    "No significant abnormality at spinal cord.\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.\n\n" +
+    "[ Recommendation ]\nclinical correlation.",
+  "MR::T-L-S-spine":
+    "Clinical information : \n" +
+    "Image Protocol : L : 3-Plane Localizer, SAG T2, SAG STIR, SAG T1, AXL T2, AXL T1, HIP COR T2, T : 3-Plane Localizer, SAG T2\n" +
+    "[ Finding ]\n\n" +
+    "L1/2 : (-)\nL2/3 : (-)\nL3/4 : (-)\nL4/5 : (-)\nL5/S1 : (-)\n\n" +
+    "Neural foraminal narrowing : (-)\nCentral canal stenosis : (-)\n\n" +
+    "Extended Hip (limited evaluation d/t only T2 coronal scan) : no significant abnormality, both hips and both SI joints.\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.\n\n" +
+    "[ Recommendation ]\nclinical correlation.",
+  "CT::L-spine": "Clinical information : \n[ Finding ]\nNo definite visible fracture line.",
+  "CT::Rib":
+    "Clinical information : Trauma.\n" +
+    "[ Finding ]\n" +
+    "No acute or healing/remote rib fracture, both sides.\nNo transverse process fracture.\nNo pleural effusion.\n" +
+    "Both lungs and mediastinum : no significant abnormality.\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.\n\n" +
+    "[ Recommendation ]\nclinical correlation.",
+  "CT::Brain":
+    "[ Finding ]\n" +
+    "No definite intracranial hemorrhage, midline shift or mass effect.\n" +
+    "Normal size and shape of ventricles and cisterns.\nNo definite acute skull fracture.\nNo remarkable finding of brain.\n\n" +
+    "[ Conclusion ]\nNo remarkable finding of brain.\n\n" +
+    "[ Recommendation ]\nclinical correlation and MRI if neurologic symptom persists.\n\n" +
+    "* 소량의 intracranial hemorrhage는 초기에 본 검사상 나타나지 않을 수도 있습니다.\n" +
+    "임상적으로 필요한 경우에는 추적검사, MRI 등이 도움이 될 수 있습니다.",
+  "MR::Brain":
+    "[ Finding ]\n" +
+    "Axial FLAIR, axial T1WI, axial T2WI, axial GRE, sagittal T1WI, coronal T2WI, intracranial TOF MRA, neck TOF MRA 시행함.\n\n" +
+    "* Both brain hemisphere : unremarkable\n* Visible sinus, mastoid & orbit : unremarkable\n" +
+    "* Epidural & subdural space : unremarkable\n* Sella, Post. fossa, CPA & brain stem : unremarkable\n" +
+    "* Ventricle & cisternal space : normal size, no abnormal finding.\n" +
+    "* MRA : no stenosis, occlusion, or aneurysm in circle of Willis or cervical arteries.\n\n" +
+    "[ Conclusion ]\nUnremarkable finding, brain MRI and MRA.",
+  "MR::Shoulder":
+    "[ Finding ]\n" +
+    "1. Rotator cuff\nSST : (-)\nIST : (-)\nSScT : intact.\n\n" +
+    "2. Labrum & capsule\nLabrum : intact\nCapsule : intact\nLHBT : intact.\n\n" +
+    "3. AC joint & bursa : Unremarkable\n\n4. Others\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.\n\n" +
+    "[ Recommendation ]\nclinical correlation.",
+  "MR::Knee":
+    "[ Finding ]\n" +
+    "1. Bone and cartilage\nNo bone marrow edema.\nNo chondral defect (ICRS Gr 0)\n\n" +
+    "2. Menisci\nMedial meniscus : intact\nLateral meniscus : intact\n\n" +
+    "3. Ligament and tendon\nACL : intact\nPCL : intact\nMCL : intact\nLCL and popliteus tendon : intact\n\n" +
+    "4. Misc\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.\n\n" +
+    "[ Recommendation ]\nclinical correlation.",
+  "MR::Ankle":
+    "[ Finding ]\n" +
+    "1. Ligaments\nAnterior talofibular ligament : intact\nPosterior talofibular ligament : intact\n" +
+    "Calcaneofibular ligament : intact\nAnterior inferior tibiofibular ligament : intact\n" +
+    "Posterior inferior tibiofibular ligament : intact\nDeltoid ligament : intact\n\n" +
+    "2. Tendons\nAchilles tendon : intact\nFlexor tendons : intact\nExtensor tendons : intact\nPeroneal tendons : intact\n\n" +
+    "3. Bone & cartilage\nNo fracture. No bone marrow edema. No cartilage defect.\n\n4. Others\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.\n\n" +
+    "[ Recommendation ]\nclinical correlation.",
+  "MR::Wrist":
+    "[ Finding ]\n" +
+    "1. Triangular fibrocartilage\n- central disk : intact\n- radioulnar lig. : intact\n\n" +
+    "2. Interosseous ligaments\n- Scapholunate ligament : intact\n- Lunotriquetral ligament : intact\n\n" +
+    "3. Carpal alignment\nNormal\n\n" +
+    "4. Bone and cartilage\nNo fracture. No bone marrow edema.\n\n" +
+    "5. Tendons\n- Flexor tendons : intact\n- Extensor tendons : intact\n- Extensor carpi ulnaris : intact\n\n" +
+    "6. Miscellaneous soft tissues\nUnremarkable.\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.",
+  "MR::Elbow":
+    "[ Finding ]\n" +
+    "1. Ligaments\nUlnar collateral ligament (UCL) : intact, no tear\nLateral collateral ligament complex : intact, no tear\n\n" +
+    "2. Tendons\nCommon flexor tendon origin : intact.\nCommon extensor tendon origin : intact.\nTriceps tendon : intact\n\n" +
+    "3. Bone & cartilage\nNo fracture. No bone marrow edema. No chondral defect.\n\n" +
+    "4. Nerve : Intact.\n\n5. Others\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.",
+  "MR::Hand":
+    "[ Finding ]\n" +
+    "1. Bone and cartilage\nNo fracture. No bone marrow edema.\n\n" +
+    "2. Tendons : Intact\n\n" +
+    "3. Ligaments\nCollateral ligaments of MCP and IP joints : intact\n\n" +
+    "4. Soft tissue\n\n" +
+    "[ Conclusion ]\nNo significant abnormality.",
 };
 
 // Each entry is auto-inserted into the user's rules exactly once, ever, tracked individually
@@ -95,9 +204,45 @@ export const storage = {
 
   // --- Normal-form templates, keyed by "modality::bodyPart" ---
   templates: {
+    getParts(modality) {
+      const all = readJson(KEYS.templateParts, {});
+      if (!all[modality]) {
+        all[modality] = [...(STARTER_TEMPLATE_PARTS[modality] || [])];
+        writeJson(KEYS.templateParts, all);
+      }
+      return all[modality];
+    },
+    addPart(modality, part) {
+      const all = readJson(KEYS.templateParts, {});
+      if (!all[modality]) all[modality] = [...(STARTER_TEMPLATE_PARTS[modality] || [])];
+      if (!all[modality].includes(part)) all[modality].push(part);
+      writeJson(KEYS.templateParts, all);
+    },
+    removePart(modality, part) {
+      const all = readJson(KEYS.templateParts, {});
+      if (all[modality]) {
+        all[modality] = all[modality].filter((p) => p !== part);
+        writeJson(KEYS.templateParts, all);
+      }
+      const texts = readJson(KEYS.templates, {});
+      delete texts[`${modality}::${part}`];
+      writeJson(KEYS.templates, texts);
+    },
     get(modality, part) {
+      const key = `${modality}::${part}`;
+      const seededTexts = readJson(KEYS.templatesSeededDefaults, []);
+      if (!seededTexts.includes(key)) {
+        if (STARTER_TEMPLATE_TEXTS[key] !== undefined) {
+          const all = readJson(KEYS.templates, {});
+          if (all[key] === undefined) {
+            all[key] = STARTER_TEMPLATE_TEXTS[key];
+            writeJson(KEYS.templates, all);
+          }
+        }
+        writeJson(KEYS.templatesSeededDefaults, [...seededTexts, key]);
+      }
       const all = readJson(KEYS.templates, {});
-      return all[`${modality}::${part}`] || "";
+      return all[key] || "";
     },
     save(modality, part, text) {
       const all = readJson(KEYS.templates, {});

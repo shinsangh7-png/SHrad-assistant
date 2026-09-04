@@ -60,7 +60,19 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "word the speaker abandoned mid-sentence, a stray adverb attached to nothing). Only " +
     "remove when you're confident it's noise, not a real qualifier — when unsure, leave it " +
     "in. Example: 'Numerous, uh, too many cysts in both kidneys.' -> 'Numerous cysts in " +
-    "both kidneys.'\n\n" +
+    "both kidneys.'\n" +
+    "9. This radiologist works from normal-form templates: a per-structure checklist under " +
+    "[ Finding ] where most entries are a plain negative marker ('(-)', 'intact', " +
+    "'unremarkable', 'Normal') and they've overwritten specific entries with an actual " +
+    "finding. If [ Conclusion ] is still just the generic placeholder text it started as " +
+    "(e.g. 'No significant abnormality.', 'Same as findings.') while [ Finding ] contains " +
+    "this kind of checklist, replace the Conclusion with a numbered list containing only " +
+    "the structures that have an actual finding — skip every entry marked '(-)', 'intact', " +
+    "'unremarkable', 'Normal', or left blank. Each numbered line names the structure and " +
+    "its finding, terse, matching this radiologist's style (e.g. '1. Anterior talofibular " +
+    "ligament : partial tear.'). If every structure in the checklist is still negative, " +
+    "leave the generic Conclusion exactly as is — do not invent a numbered list with " +
+    "nothing in it.\n\n" +
     "Output only the fully corrected report text, nothing else — no preamble, no markdown, " +
     "no explanation of changes."
   );

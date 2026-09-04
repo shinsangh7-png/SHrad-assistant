@@ -18,7 +18,7 @@
 
       <div class="action-row">
         <button class="action-sm" data-tab="tab-rules">규칙</button>
-        <button class="action-sm" data-tab="tab-templates">노말폼</button>
+        <button class="action-sm" data-tab="tab-templates">Template</button>
         <button id="correct-btn" class="primary action-sm">Correction</button>
         <button id="check-btn" class="action-sm" title="감별진단 및 체크포인트 확인">Check</button>
         <button id="reset-btn" class="action-sm" title="내용 지우기">Reset</button>
@@ -46,8 +46,14 @@
       <div class="rules-header">
         <button class="action-sm" data-tab="tab-transcribe">← 전사</button>
       </div>
+      <p class="rules-desc">클릭하면 바로 삽입됩니다. 우클릭으로 수정/삭제하세요.</p>
       <div id="template-content"></div>
     </div>
+  </div>
+
+  <div id="template-context-menu" class="context-menu hidden">
+    <button type="button" data-action="edit">수정</button>
+    <button type="button" data-action="delete">삭제</button>
   </div>
 
   <div id="settings-modal" class="modal-overlay hidden">
