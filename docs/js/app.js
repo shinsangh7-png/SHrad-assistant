@@ -114,7 +114,8 @@ startBtn.addEventListener("click", toggleRecording);
 // often, mid-sentence, to mark where one phrase ends and the next begins -- so while already
 // recording it just cuts the current segment off and sends it, without stopping the mic (no
 // re-acquiring the microphone, no recalibration delay, and nothing spoken right after the tap
-// gets lost waiting for that). To actually stop dictating, click the mic button instead.
+// gets lost waiting for that). Holding Shift with it fully stops instead, so starting and
+// stopping don't require switching between keyboard and mouse.
 let dictationHotkey = storage.getSettings().hotkey || "F6";
 
 function normalizeKey(key) {
@@ -123,13 +124,20 @@ function normalizeKey(key) {
 
 function setDictationHotkey(key) {
   dictationHotkey = key;
+  startBtn.title = `전사 시작 / 구간 나누기 (${key}), Shift+${key}로 정지`;
 }
+setDictationHotkey(dictationHotkey);
 
 document.addEventListener("keydown", (e) => {
   if (normalizeKey(e.key) === dictationHotkey) {
     e.preventDefault();
-    if (isRecording) dictation.cutNow();
-    else startRecording();
+    if (e.shiftKey) {
+      if (isRecording) stopRecording();
+    } else if (isRecording) {
+      dictation.cutNow();
+    } else {
+      startRecording();
+    }
   }
 });
 
@@ -288,6 +296,107 @@ document.getElementById("add-rule-btn").addEventListener("click", () => {
 });
 
 refreshRulesList();
+
+// --- Normal-form templates (modality -> body part -> saved boilerplate text) ---
+const MODALITIES = ["MR", "CT", "US", "X-ray"];
+const PARTS_BY_MODALITY = {
+  MR: ["C-spine", "T-L-S-spine", "Knee", "Shoulder", "Wrist", "Ankle", "Hip", "Brain", "Elbow"],
+  CT: ["C-spine", "L-spine", "Chest", "Abdomen", "Brain", "Facial bone", "Rib"],
+  US: ["Thyroid", "Abdomen", "Carotid"],
+  "X-ray": ["Knee", "Spine", "Chest"],
+};
+
+const templateContent = document.getElementById("template-content");
+
+function renderTemplateModalityStep() {
+  templateContent.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "modality-grid";
+  MODALITIES.forEach((modality) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "action-sm";
+    btn.textContent = modality;
+    btn.addEventListener("click", () => renderTemplatePartStep(modality));
+    grid.appendChild(btn);
+  });
+  templateContent.appendChild(grid);
+}
+
+function renderTemplatePartStep(modality) {
+  templateContent.innerHTML = "";
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "action-sm";
+  back.textContent = "← 모달리티";
+  back.addEventListener("click", renderTemplateModalityStep);
+  templateContent.appendChild(back);
+
+  const grid = document.createElement("div");
+  grid.className = "modality-grid";
+  (PARTS_BY_MODALITY[modality] || []).forEach((part) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "action-sm";
+    btn.textContent = part;
+    btn.addEventListener("click", () => renderTemplateEditStep(modality, part));
+    grid.appendChild(btn);
+  });
+  templateContent.appendChild(grid);
+}
+
+function renderTemplateEditStep(modality, part) {
+  templateContent.innerHTML = "";
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "action-sm";
+  back.textContent = `← ${modality}`;
+  back.addEventListener("click", () => renderTemplatePartStep(modality));
+  templateContent.appendChild(back);
+
+  const label = document.createElement("p");
+  label.className = "rules-desc";
+  label.textContent = `${modality} - ${part}`;
+  templateContent.appendChild(label);
+
+  const textarea = document.createElement("textarea");
+  textarea.id = "template-edit-text";
+  textarea.placeholder = "노말폼 텍스트를 입력하세요...";
+  textarea.value = storage.templates.get(modality, part);
+  templateContent.appendChild(textarea);
+
+  const row = document.createElement("div");
+  row.className = "action-row";
+
+  const insertBtn = document.createElement("button");
+  insertBtn.type = "button";
+  insertBtn.className = "primary action-sm";
+  insertBtn.textContent = "삽입";
+  insertBtn.addEventListener("click", () => {
+    if (textarea.value.trim()) insertAtCursor(transcriptText, textarea.value.trim());
+    document.getElementById("tab-templates").classList.add("hidden");
+    document.getElementById("tab-transcribe").classList.remove("hidden");
+  });
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "action-sm";
+  saveBtn.textContent = "저장";
+  saveBtn.addEventListener("click", () => {
+    storage.templates.save(modality, part, textarea.value);
+    saveBtn.textContent = "저장됨";
+    setTimeout(() => {
+      saveBtn.textContent = "저장";
+    }, 1000);
+  });
+
+  row.appendChild(insertBtn);
+  row.appendChild(saveBtn);
+  templateContent.appendChild(row);
+}
+
+document.querySelector('[data-tab="tab-templates"]').addEventListener("click", renderTemplateModalityStep);
+renderTemplateModalityStep();
 
 // --- Settings (API keys + custom terms) ---
 const settingsModal = document.getElementById("settings-modal");

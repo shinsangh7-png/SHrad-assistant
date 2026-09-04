@@ -1,15 +1,17 @@
 const KEYS = {
   rules: "sh-rad.rules",
-  rulesSeeded: "sh-rad.rules.seeded",
+  rulesSeededDefaults: "sh-rad.rules.seededDefaults",
   settings: "sh-rad.settings",
+  templates: "sh-rad.templates",
 };
 
-// Seeded once on first-ever use (tracked separately from an empty list so a user who deletes
-// all their rules later doesn't get them silently repopulated). Punctuation-word commands
-// ("period", "comma", 마침표/점찍고) work instantly here rather than waiting on Correction,
-// since Correction is slow enough that it's often skipped. mm -> MM is a deliberate accepted
-// risk against the millimeter unit -- word-boundary matching already protects the attached
-// form ("4mm", "2.5mm": no boundary between a digit and a letter) but not "4 mm" (space-separated).
+// Each entry is auto-inserted into the user's rules exactly once, ever, tracked individually
+// by find_text (not a single "seeded?" flag) -- so adding a new entry here later still reaches
+// existing users on their next load, without re-adding one they deliberately deleted. Punctuation
+// -word commands ("period", "comma", 마침표/점찍고) work instantly here rather than waiting on
+// Correction, since Correction is slow enough that it's often skipped. mm -> MM is a deliberate
+// accepted risk against the millimeter unit -- word-boundary matching already protects the
+// attached form ("4mm", "2.5mm": no boundary between a digit and a letter) but not "4 mm".
 const DEFAULT_RULES = [
   { find_text: "left", replace_text: "Lt." },
   { find_text: "right", replace_text: "Rt." },
@@ -21,6 +23,7 @@ const DEFAULT_RULES = [
   { find_text: "opll", replace_text: "OPLL" },
   { find_text: "acl", replace_text: "ACL" },
   { find_text: "mm", replace_text: "MM" },
+  { find_text: "rule out", replace_text: "r/o" },
 ];
 
 function readJson(key, fallback) {
@@ -60,14 +63,14 @@ export const storage = {
 
   // --- Post-processing rules ---
   listRules() {
-    if (!localStorage.getItem(KEYS.rulesSeeded)) {
-      localStorage.setItem(KEYS.rulesSeeded, "1");
-      if (readJson(KEYS.rules, []).length === 0) {
-        writeJson(
-          KEYS.rules,
-          DEFAULT_RULES.map((r) => ({ ...r, id: uid(), is_active: true }))
-        );
-      }
+    const seeded = readJson(KEYS.rulesSeededDefaults, []);
+    const seededSet = new Set(seeded);
+    const toAdd = DEFAULT_RULES.filter((r) => !seededSet.has(r.find_text));
+    if (toAdd.length > 0) {
+      const existing = readJson(KEYS.rules, []);
+      const added = toAdd.map((r) => ({ ...r, id: uid(), is_active: true }));
+      writeJson(KEYS.rules, [...existing, ...added]);
+      writeJson(KEYS.rulesSeededDefaults, [...seeded, ...toAdd.map((r) => r.find_text)]);
     }
     return readJson(KEYS.rules, []);
   },
@@ -88,6 +91,19 @@ export const storage = {
   deleteRule(id) {
     const all = this.listRules().filter((r) => r.id !== id);
     writeJson(KEYS.rules, all);
+  },
+
+  // --- Normal-form templates, keyed by "modality::bodyPart" ---
+  templates: {
+    get(modality, part) {
+      const all = readJson(KEYS.templates, {});
+      return all[`${modality}::${part}`] || "";
+    },
+    save(modality, part, text) {
+      const all = readJson(KEYS.templates, {});
+      all[`${modality}::${part}`] = text;
+      writeJson(KEYS.templates, all);
+    },
   },
 };
 
