@@ -201,15 +201,6 @@ export class Dictation {
     this.onStatus?.("stopped");
   }
 
-  // Force whatever's been captured so far to be cut off and sent for transcription right
-  // now, without stopping the mic or ending the dictation session -- lets the user manually
-  // mark a segment boundary (e.g. pressing F6 between phrases) instead of waiting on the
-  // silence timer, with no mic-teardown/recalibration cost since the stream stays open.
-  cutNow() {
-    if (!this.running) return;
-    this._finishSegment();
-  }
-
   async _calibrateNoiseFloor() {
     const samples = [];
     const start = performance.now();

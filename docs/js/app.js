@@ -114,12 +114,8 @@ function toggleRecording() {
 startBtn.addEventListener("mousedown", (e) => e.preventDefault());
 startBtn.addEventListener("click", toggleRecording);
 
-// The dictation hotkey (default F6, user-configurable in settings) is meant to be tapped
-// often, mid-sentence, to mark where one phrase ends and the next begins -- so while already
-// recording it just cuts the current segment off and sends it, without stopping the mic (no
-// re-acquiring the microphone, no recalibration delay, and nothing spoken right after the tap
-// gets lost waiting for that). Holding Shift with it fully stops instead, so starting and
-// stopping don't require switching between keyboard and mouse.
+// The dictation hotkey (default F6, user-configurable in settings) just toggles recording
+// on/off -- same key starts and stops, no separate pause/full-stop distinction.
 let dictationHotkey = storage.getSettings().hotkey || "F6";
 
 function normalizeKey(key) {
@@ -128,20 +124,14 @@ function normalizeKey(key) {
 
 function setDictationHotkey(key) {
   dictationHotkey = key;
-  startBtn.title = `전사 시작 / 구간 나누기 (${key}), Shift+${key}로 정지`;
+  startBtn.title = `전사 시작/정지 (${key})`;
 }
 setDictationHotkey(dictationHotkey);
 
 document.addEventListener("keydown", (e) => {
   if (normalizeKey(e.key) === dictationHotkey) {
     e.preventDefault();
-    if (e.shiftKey) {
-      if (isRecording) stopRecording();
-    } else if (isRecording) {
-      dictation.cutNow();
-    } else {
-      startRecording();
-    }
+    toggleRecording();
   }
 });
 
