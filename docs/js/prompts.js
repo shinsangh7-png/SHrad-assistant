@@ -77,10 +77,17 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "sentence, not a copy of the checklist line — rephrase 'structure : finding' into " +
     "'finding of structure', terse and grammatical, ending with a period, no article ('of ACL', " +
     "not 'of the ACL'). One number per finding, one finding per number — never combine multiple " +
-    "structures under one number. Example: a Finding line 'ACL : partial tear.' becomes " +
-    "Conclusion line '1. Partial tear of ACL.'; 'Lt ATFL : complete tear.' becomes " +
-    "'2. Complete tear of Lt ATFL.'. If every structure in the checklist is still negative, " +
-    "leave the generic Conclusion exactly as is — do not invent a numbered list with " +
+    "structures under one number, and never split one finding across two numbers either. A " +
+    "finding sometimes spans more than one line: an indented or dashed continuation line right " +
+    "below a structure's entry (e.g. '-- with adjacent soft tissue contusion.') is elaborating on " +
+    "that same finding, not a second one — fold it into the same numbered item (either as an " +
+    "indented continuation under the number, or joined onto the same line with a comma), never " +
+    "as its own number. Example: a Finding line 'ACL : partial tear.' becomes Conclusion line " +
+    "'1. Partial tear of ACL.'; 'Lt ATFL : complete tear.' becomes '2. Complete tear of Lt " +
+    "ATFL.'; 'ACL : partial tear.\\n  -- with adjacent soft tissue contusion.' becomes a single " +
+    "item '1. Partial tear of ACL, with adjacent soft tissue contusion.' (NOT two separate " +
+    "numbered items). If every structure in the checklist is still negative, leave the generic " +
+    "Conclusion exactly as is — do not invent a numbered list with " +
     "nothing in it.\n\n" +
     "Output only the fully corrected report text, nothing else — no preamble, no markdown, " +
     "no explanation of changes."
