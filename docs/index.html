@@ -113,24 +113,18 @@
   </div>
 
   <div id="check-modal" class="modal-overlay hidden">
-    <div class="modal-box">
+    <div class="modal-box modal-box-lg">
       <div class="modal-header">
-        <h2>Check</h2>
+        <h2>Check Point</h2>
         <button id="close-check-modal" class="modal-close" aria-label="닫기">&times;</button>
       </div>
-      <div class="check-section">
-        <div class="check-section-title">임상적 고려사항</div>
-        <ul id="check-clinical-list" class="check-list"></ul>
-      </div>
-      <div class="check-section">
-        <div class="check-section-title">영상의학적 추가 고려사항</div>
-        <ul id="check-radiological-list" class="check-list"></ul>
-      </div>
-      <div class="check-section">
-        <div class="check-section-title">Differential Diagnosis</div>
-        <ul id="check-ddx-list" class="check-list"></ul>
+      <div class="check-tabs">
+        <button class="check-tab active" data-provider="claude">Claude</button>
+        <button class="check-tab" data-provider="gemini">Gemini</button>
+        <button class="check-tab" data-provider="gpt">GPT</button>
       </div>
       <div class="status-msg" id="check-modal-status"></div>
+      <div id="check-list-container"></div>
     </div>
   </div>
 

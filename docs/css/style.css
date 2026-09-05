@@ -314,40 +314,92 @@ button:disabled {
   margin-bottom: 8px;
 }
 
-.check-section {
-  margin-bottom: 12px;
+.check-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
 }
 
-.check-section-title {
-  font-size: 11px;
-  color: var(--muted);
+.check-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 7px 12px;
+  font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 5px;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: -1px;
 }
 
-.check-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.check-tab.active {
+  color: var(--accent-strong);
+  border-bottom-color: var(--accent-strong);
+}
+
+.checkpoint-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
-.check-list li {
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 6px 9px;
+.checkpoint-card {
   background: var(--accent-pale);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
 }
 
-.check-list li.check-list-empty {
+.checkpoint-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.checkpoint-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.checkpoint-chevron {
+  font-size: 11px;
   color: var(--muted);
-  background: var(--bg);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.checkpoint-card.expanded .checkpoint-chevron {
+  transform: rotate(90deg);
+}
+
+.checkpoint-summary {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  margin-top: 3px;
+}
+
+.checkpoint-detail {
+  display: none;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.checkpoint-card.expanded .checkpoint-detail {
+  display: block;
+}
+
+.checkpoint-list-empty {
+  color: var(--muted);
   font-size: 12px;
+  padding: 6px 2px;
 }
 
 .rules-desc {
@@ -430,6 +482,10 @@ button:disabled {
   width: min(340px, 100%);
   max-height: 85vh;
   overflow-y: auto;
+}
+
+.modal-box-lg {
+  width: min(560px, 100%);
 }
 
 .modal-header {

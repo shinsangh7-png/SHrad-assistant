@@ -1,5 +1,6 @@
 import { storage, applyPostprocessingRules } from "./storage.js";
-import { correctGrammar, getCheckpoints } from "./anthropic-client.js";
+import { correctGrammar } from "./anthropic-client.js";
+import { getCheckpointsClaude, getCheckpointsGemini, getCheckpointsGpt } from "./checkpoints-client.js";
 import { Dictation } from "./dictation.js";
 import { insertAtCursor } from "./cursor-insert.js";
 
@@ -242,59 +243,104 @@ copyBtn.addEventListener("click", async () => {
   }
 });
 
-// --- Check (clinical / radiological considerations / differential diagnosis) ---
+// --- Check (Claude / Gemini / GPT checkpoint comparison, each fetched lazily per tab) ---
 const checkModal = document.getElementById("check-modal");
-const checkClinicalList = document.getElementById("check-clinical-list");
-const checkRadiologicalList = document.getElementById("check-radiological-list");
-const checkDdxList = document.getElementById("check-ddx-list");
 const checkModalStatus = document.getElementById("check-modal-status");
+const checkListContainer = document.getElementById("check-list-container");
+const checkTabButtons = document.querySelectorAll(".check-tab");
 
-function renderCheckList(el, items) {
-  el.innerHTML = "";
+const CHECKPOINT_FETCHERS = {
+  claude: getCheckpointsClaude,
+  gemini: getCheckpointsGemini,
+  gpt: getCheckpointsGpt,
+};
+
+let checkCache = { claude: null, gemini: null, gpt: null };
+let activeProvider = "claude";
+
+function renderCheckpointList(items) {
+  checkListContainer.innerHTML = "";
   if (!items.length) {
-    const li = document.createElement("li");
-    li.className = "check-list-empty";
-    li.textContent = "해당 없음";
-    el.appendChild(li);
+    const div = document.createElement("div");
+    div.className = "checkpoint-list-empty";
+    div.textContent = "특별히 짚을 점 없음";
+    checkListContainer.appendChild(div);
     return;
   }
+  const list = document.createElement("div");
+  list.className = "checkpoint-list";
   items.forEach((item) => {
-    const li = document.createElement("li");
-    li.textContent = item;
-    el.appendChild(li);
+    const card = document.createElement("div");
+    card.className = "checkpoint-card";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "checkpoint-title-row";
+    const title = document.createElement("div");
+    title.className = "checkpoint-title";
+    title.textContent = item.title;
+    const chevron = document.createElement("div");
+    chevron.className = "checkpoint-chevron";
+    chevron.textContent = "▸";
+    titleRow.append(title, chevron);
+
+    const summary = document.createElement("div");
+    summary.className = "checkpoint-summary";
+    summary.textContent = item.summary;
+
+    const detail = document.createElement("div");
+    detail.className = "checkpoint-detail";
+    detail.textContent = item.detail;
+
+    card.append(titleRow, summary, detail);
+    card.addEventListener("click", () => card.classList.toggle("expanded"));
+    list.appendChild(card);
   });
+  checkListContainer.appendChild(list);
+}
+
+async function loadProviderTab(provider) {
+  activeProvider = provider;
+  checkTabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.provider === provider));
+
+  if (checkCache[provider]) {
+    checkModalStatus.textContent = "";
+    renderCheckpointList(checkCache[provider]);
+    return;
+  }
+
+  checkListContainer.innerHTML = "";
+  checkModalStatus.textContent = "불러오는 중...";
+  checkModalStatus.style.color = "var(--muted)";
+  try {
+    const items = await CHECKPOINT_FETCHERS[provider](transcriptText.value);
+    checkCache[provider] = items;
+    if (activeProvider !== provider) return; // user switched tabs while this was loading
+    checkModalStatus.textContent = "";
+    renderCheckpointList(items);
+  } catch (e) {
+    if (activeProvider !== provider) return;
+    checkModalStatus.textContent = e.message || String(e);
+    checkModalStatus.style.color = "var(--danger)";
+  }
 }
 
 function closeCheckModal() {
   checkModal.classList.add("hidden");
 }
 
+checkTabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => loadProviderTab(btn.dataset.provider));
+});
+
 checkBtn.addEventListener("mousedown", (e) => e.preventDefault());
-checkBtn.addEventListener("click", async () => {
+checkBtn.addEventListener("click", () => {
   if (!transcriptText.value.trim()) {
     setMicStatus("확인할 내용이 없습니다.", true);
     return;
   }
-  checkBtn.disabled = true;
-  checkClinicalList.innerHTML = "";
-  checkRadiologicalList.innerHTML = "";
-  checkDdxList.innerHTML = "";
-  checkModalStatus.textContent = "불러오는 중...";
-  checkModalStatus.style.color = "var(--muted)";
+  checkCache = { claude: null, gemini: null, gpt: null };
   checkModal.classList.remove("hidden");
-  try {
-    const { clinicalConsiderations, radiologicalConsiderations, differentials } =
-      await getCheckpoints(transcriptText.value);
-    renderCheckList(checkClinicalList, clinicalConsiderations);
-    renderCheckList(checkRadiologicalList, radiologicalConsiderations);
-    renderCheckList(checkDdxList, differentials);
-    checkModalStatus.textContent = "";
-  } catch (e) {
-    checkModalStatus.textContent = e.message || String(e);
-    checkModalStatus.style.color = "var(--danger)";
-  } finally {
-    checkBtn.disabled = false;
-  }
+  loadProviderTab("claude");
 });
 
 document.getElementById("close-check-modal").addEventListener("click", closeCheckModal);
