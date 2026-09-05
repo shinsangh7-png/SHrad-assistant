@@ -57,6 +57,54 @@ function convertDiscLevels(text) {
   });
 }
 
+// The radiologist writes the Conclusion's importance order by hand: edit the leading number
+// on each line (without moving the line itself) to say where it should end up, then run
+// Correction again. This physically reorders the lines to match those numbers and renumbers
+// them 1..N in the new order -- a pure mechanical operation kept out of the LLM prompt so it
+// can never rephrase a finding while "helping" with the reorder.
+function reorderConclusionByUserNumbers(text) {
+  const headerMatch = text.match(/\[\s*Conclusion\s*\]/i);
+  if (!headerMatch) return text;
+  const startIdx = headerMatch.index + headerMatch[0].length;
+  const rest = text.slice(startIdx);
+  const nextMarkerMatch = rest.match(/\[\s*[^\]]+\s*\]/);
+  const endIdx = nextMarkerMatch ? startIdx + nextMarkerMatch.index : text.length;
+
+  const before = text.slice(0, startIdx);
+  const section = text.slice(startIdx, endIdx);
+  const after = text.slice(endIdx);
+
+  const lines = section.split("\n");
+  const itemStarts = [];
+  lines.forEach((line, i) => {
+    if (/^\s*\d+\.\s/.test(line)) itemStarts.push(i);
+  });
+  if (itemStarts.length < 2) return text;
+
+  const leading = lines.slice(0, itemStarts[0]);
+  const trailing = lines.slice(itemStarts[itemStarts.length - 1] + 1);
+
+  const items = itemStarts.map((startLine, idx) => {
+    const endLine = idx + 1 < itemStarts.length ? itemStarts[idx + 1] : lines.length - trailing.length;
+    const block = lines.slice(startLine, endLine);
+    const num = parseInt(block[0].match(/^\s*(\d+)\./)[1], 10);
+    return { num, block };
+  });
+
+  const sorted = [...items].sort((a, b) => a.num - b.num);
+  const alreadyFine = items.every((it, i) => it === sorted[i] && it.num === i + 1);
+  if (alreadyFine) return text;
+
+  const renumberedLines = sorted.flatMap((item, i) => {
+    const [first, ...restLines] = item.block;
+    const newFirst = first.replace(/^(\s*)\d+\./, `$1${i + 1}.`);
+    return [newFirst, ...restLines];
+  });
+
+  const newSection = [...leading, ...renumberedLines, ...trailing].join("\n");
+  return before + newSection + after;
+}
+
 // --- Tabs (plain nav buttons: "규칙" to go to the rules screen, "← 전사" to come back) ---
 document.querySelectorAll("[data-tab]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -147,6 +195,7 @@ correctBtn.addEventListener("click", async () => {
   try {
     let corrected = await correctGrammar(transcriptText.value);
     corrected = applyPostprocessingRules(corrected);
+    corrected = reorderConclusionByUserNumbers(corrected);
     transcriptText.value = corrected;
     setMicStatus("교정 완료.");
   } catch (e) {
@@ -162,6 +211,35 @@ resetBtn.addEventListener("click", () => {
   transcriptText.value = "";
   transcriptText.focus();
   setMicStatus("초기화됨");
+});
+
+// --- Copy (Finding/Conclusion/Recommendation, tab-separated, for pasting into PACS) ---
+function extractSection(text, headerRe) {
+  const m = text.match(headerRe);
+  if (!m) return "";
+  const rest = text.slice(m.index + m[0].length);
+  const nextMarkerMatch = rest.match(/\[\s*[^\]]+\s*\]/);
+  const end = nextMarkerMatch ? nextMarkerMatch.index : rest.length;
+  return rest.slice(0, end).trim();
+}
+
+function buildPacsCopyText(text) {
+  const finding = extractSection(text, /\[\s*Finding\s*\]/i);
+  const conclusion = extractSection(text, /\[\s*Conclusion\s*\]/i);
+  const recommendation = extractSection(text, /\[\s*Recommendation\s*\]/i);
+  return [finding, conclusion, recommendation].join("\t");
+}
+
+const copyBtn = document.getElementById("copy-btn");
+copyBtn.addEventListener("mousedown", (e) => e.preventDefault());
+copyBtn.addEventListener("click", async () => {
+  const payload = buildPacsCopyText(transcriptText.value);
+  try {
+    await navigator.clipboard.writeText(payload);
+    setMicStatus("복사됨 (Tab 구분, PACS에 붙여넣기)");
+  } catch (e) {
+    setMicStatus(`복사 실패: ${e.message}`, true);
+  }
 });
 
 // --- Check (clinical / radiological considerations / differential diagnosis) ---
