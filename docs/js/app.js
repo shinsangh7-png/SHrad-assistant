@@ -22,7 +22,11 @@ function setMicStatus(msg, isError = false) {
 // capitalization/periods afterward using the full text as context.
 function stripAutoPunctuation(text) {
   let t = text.replace(/[.!?]+\s*$/, "");
-  if (t.length > 0) t = t.charAt(0).toLowerCase() + t.slice(1);
+  if (t.length > 0) {
+    const firstWord = (t.match(/^[A-Za-z]+/) || [""])[0];
+    const isAcronym = firstWord.length >= 2 && firstWord === firstWord.toUpperCase();
+    if (!isAcronym) t = t.charAt(0).toLowerCase() + t.slice(1);
+  }
   return t;
 }
 
