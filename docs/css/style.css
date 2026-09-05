@@ -428,6 +428,8 @@ button:disabled {
   box-shadow: var(--shadow-md);
   padding: 18px;
   width: min(340px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-header {

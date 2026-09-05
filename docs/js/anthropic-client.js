@@ -6,14 +6,17 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 
 const CHECKPOINTS_TOOL = {
   name: "report_checkpoints",
-  description: "Differential diagnoses and checkpoints for a radiology report draft.",
+  description:
+    "Clinical considerations, additional radiological considerations, and differential " +
+    "diagnoses for a radiology report draft.",
   input_schema: {
     type: "object",
     properties: {
-      differentials: { type: "array", items: { type: "string" }, maxItems: 3 },
-      checkpoints: { type: "array", items: { type: "string" }, maxItems: 3 },
+      clinicalConsiderations: { type: "array", items: { type: "string" }, maxItems: 5 },
+      radiologicalConsiderations: { type: "array", items: { type: "string" }, maxItems: 5 },
+      differentials: { type: "array", items: { type: "string" }, maxItems: 5 },
     },
-    required: ["differentials", "checkpoints"],
+    required: ["clinicalConsiderations", "radiologicalConsiderations", "differentials"],
   },
 };
 
@@ -58,7 +61,7 @@ export async function correctGrammar(text) {
 export async function getCheckpoints(text) {
   const body = {
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     temperature: 0.3,
     system: checkPointSystemPrompt(),
     tools: [CHECKPOINTS_TOOL],
@@ -85,8 +88,9 @@ export async function getCheckpoints(text) {
   const toolUse = data.content.find((b) => b.type === "tool_use");
   if (!toolUse) throw new Error("체크 결과를 가져오지 못했습니다.");
   return {
-    differentials: (toolUse.input.differentials || []).slice(0, 3),
-    checkpoints: (toolUse.input.checkpoints || []).slice(0, 3),
+    clinicalConsiderations: (toolUse.input.clinicalConsiderations || []).slice(0, 5),
+    radiologicalConsiderations: (toolUse.input.radiologicalConsiderations || []).slice(0, 5),
+    differentials: (toolUse.input.differentials || []).slice(0, 5),
   };
 }
 

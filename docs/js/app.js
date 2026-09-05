@@ -164,10 +164,11 @@ resetBtn.addEventListener("click", () => {
   setMicStatus("초기화됨");
 });
 
-// --- Check (differential diagnosis / checkpoints) ---
+// --- Check (clinical / radiological considerations / differential diagnosis) ---
 const checkModal = document.getElementById("check-modal");
+const checkClinicalList = document.getElementById("check-clinical-list");
+const checkRadiologicalList = document.getElementById("check-radiological-list");
 const checkDdxList = document.getElementById("check-ddx-list");
-const checkPointsList = document.getElementById("check-points-list");
 const checkModalStatus = document.getElementById("check-modal-status");
 
 function renderCheckList(el, items) {
@@ -197,15 +198,18 @@ checkBtn.addEventListener("click", async () => {
     return;
   }
   checkBtn.disabled = true;
+  checkClinicalList.innerHTML = "";
+  checkRadiologicalList.innerHTML = "";
   checkDdxList.innerHTML = "";
-  checkPointsList.innerHTML = "";
   checkModalStatus.textContent = "불러오는 중...";
   checkModalStatus.style.color = "var(--muted)";
   checkModal.classList.remove("hidden");
   try {
-    const { differentials, checkpoints } = await getCheckpoints(transcriptText.value);
+    const { clinicalConsiderations, radiologicalConsiderations, differentials } =
+      await getCheckpoints(transcriptText.value);
+    renderCheckList(checkClinicalList, clinicalConsiderations);
+    renderCheckList(checkRadiologicalList, radiologicalConsiderations);
     renderCheckList(checkDdxList, differentials);
-    renderCheckList(checkPointsList, checkpoints);
     checkModalStatus.textContent = "";
   } catch (e) {
     checkModalStatus.textContent = e.message || String(e);
