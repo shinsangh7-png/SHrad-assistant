@@ -1,5 +1,5 @@
 import { storage, applyPostprocessingRules } from "./storage.js";
-import { correctGrammar } from "./anthropic-client.js";
+import { correctGrammar, generateConclusion } from "./anthropic-client.js";
 import { getCheckpointsClaude, getCheckpointsGemini, getCheckpointsGpt } from "./checkpoints-client.js";
 import { Dictation } from "./dictation.js";
 import { insertAtCursor } from "./cursor-insert.js";
@@ -7,6 +7,8 @@ import { insertAtCursor } from "./cursor-insert.js";
 const transcriptText = document.getElementById("transcript-text");
 const startBtn = document.getElementById("start-btn");
 const correctBtn = document.getElementById("correct-btn");
+const conclusionBtn = document.getElementById("conclusion-btn");
+const sortBtn = document.getElementById("sort-btn");
 const checkBtn = document.getElementById("check-btn");
 const resetBtn = document.getElementById("reset-btn");
 const micStatus = document.getElementById("mic-status");
@@ -184,7 +186,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// --- Correction ---
+// --- Correction (grammar/typo only — never touches Conclusion content or line structure) ---
 correctBtn.addEventListener("mousedown", (e) => e.preventDefault());
 correctBtn.addEventListener("click", async () => {
   if (!transcriptText.value.trim()) {
@@ -196,7 +198,6 @@ correctBtn.addEventListener("click", async () => {
   try {
     let corrected = await correctGrammar(transcriptText.value);
     corrected = applyPostprocessingRules(corrected);
-    corrected = reorderConclusionByUserNumbers(corrected);
     transcriptText.value = corrected;
     setMicStatus("교정 완료.");
   } catch (e) {
@@ -204,6 +205,43 @@ correctBtn.addEventListener("click", async () => {
   } finally {
     correctBtn.disabled = false;
   }
+});
+
+// --- Conclusion (generates/refreshes only the [ Conclusion ] section from [ Finding ]) ---
+conclusionBtn.addEventListener("mousedown", (e) => e.preventDefault());
+conclusionBtn.addEventListener("click", async () => {
+  if (!transcriptText.value.trim()) {
+    setMicStatus("Conclusion을 생성할 내용이 없습니다.", true);
+    return;
+  }
+  conclusionBtn.disabled = true;
+  setMicStatus("Conclusion 생성 중...");
+  try {
+    let result = await generateConclusion(transcriptText.value);
+    result = applyPostprocessingRules(result);
+    transcriptText.value = result;
+    setMicStatus("Conclusion 생성 완료.");
+  } catch (e) {
+    setMicStatus(`Conclusion 생성 실패: ${e.message}`, true);
+  } finally {
+    conclusionBtn.disabled = false;
+  }
+});
+
+// --- Sort (mechanical, no LLM call: reorders Conclusion lines by the number the user typed) ---
+sortBtn.addEventListener("mousedown", (e) => e.preventDefault());
+sortBtn.addEventListener("click", () => {
+  if (!transcriptText.value.trim()) {
+    setMicStatus("정렬할 내용이 없습니다.", true);
+    return;
+  }
+  const reordered = reorderConclusionByUserNumbers(transcriptText.value);
+  if (reordered === transcriptText.value) {
+    setMicStatus("정렬할 Conclusion 항목이 없거나 이미 정렬되어 있습니다.");
+    return;
+  }
+  transcriptText.value = reordered;
+  setMicStatus("Conclusion 번호 정렬 완료.");
 });
 
 // --- Reset ---

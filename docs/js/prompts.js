@@ -35,13 +35,20 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "- Preserve standard radiology abbreviations exactly as written: 'S/P' (status post), " +
     "'C.I.' (clinical information), 'R/O' (rule out), 'Rt.'/'Lt.' (right/left). Never spell " +
     "these out or expand them.\n\n" +
+    "Preserve the input's line breaks and blank lines exactly as given — this text is arranged " +
+    "into a template's sections/checklist with specific spacing, and that layout must survive " +
+    "correction untouched. Never merge two lines into one, never split one line into several, " +
+    "and never add or remove a blank line, except where rule 3 below specifically applies.\n\n" +
     "Apply these formatting rules:\n" +
     "1. Capitalize the first letter of every sentence.\n" +
     "2. Ensure every sentence ends with a period if it doesn't already.\n" +
-    "3. Put each sentence on its own line — insert a line break immediately after every " +
-    "sentence-ending period, so the output reads as one finding per line rather than a " +
-    "running paragraph. (A period used inside an abbreviation like 'S/P' or 'C.I.' is not a " +
-    "sentence end — don't break there.)\n" +
+    "3. Only if two or more complete sentences are currently run together on the same line with " +
+    "no line break between them (a run-on dictation artifact), insert a line break immediately " +
+    "after each sentence-ending period so each becomes its own line. Do NOT do this when the " +
+    "input already has its own line-break structure — leave lines that are already on separate " +
+    "lines exactly as they are, and leave existing blank lines exactly where they are. (A period " +
+    "used inside an abbreviation like 'S/P' or 'C.I.' is not a sentence end — don't break " +
+    "there.)\n" +
     "4. Convert numeric level/grade indicators to radiology report style using Roman " +
     "numerals — e.g. 'level 1, 2' -> 'level I, II', 'Grade 3' -> 'Grade III'. Only convert " +
     "when the number is clearly a grade/level/stage classification, not a general count, " +
@@ -66,31 +73,52 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "remove when you're confident it's noise, not a real qualifier — when unsure, leave it " +
     "in. Example: 'Numerous, uh, too many cysts in both kidneys.' -> 'Numerous cysts in " +
     "both kidneys.'\n" +
-    "9. This radiologist works from normal-form templates: a per-structure checklist under " +
-    "[ Finding ] where most entries are a plain negative marker ('(-)', 'intact', " +
-    "'unremarkable', 'Normal') and they've overwritten specific entries with an actual " +
-    "finding. If [ Conclusion ] is still just the generic placeholder text it started as " +
-    "(e.g. 'No significant abnormality.', 'Same as findings.') while [ Finding ] contains " +
-    "this kind of checklist, replace the Conclusion with a numbered list containing only " +
-    "the structures that have an actual finding — skip every entry marked '(-)', 'intact', " +
-    "'unremarkable', 'Normal', or left blank. Write each numbered line as a natural clinical " +
-    "sentence, not a copy of the checklist line — rephrase 'structure : finding' into " +
-    "'finding of structure', terse and grammatical, ending with a period, no article ('of ACL', " +
-    "not 'of the ACL'). One number per finding, one finding per number — never combine multiple " +
-    "structures under one number, and never split one finding across two numbers either. A " +
-    "finding sometimes spans more than one line: an indented or dashed continuation line right " +
-    "below a structure's entry (e.g. '-- with adjacent soft tissue contusion.') is elaborating on " +
-    "that same finding, not a second one — fold it into the same numbered item (either as an " +
-    "indented continuation under the number, or joined onto the same line with a comma), never " +
-    "as its own number. Example: a Finding line 'ACL : partial tear.' becomes Conclusion line " +
-    "'1. Partial tear of ACL.'; 'Lt ATFL : complete tear.' becomes '2. Complete tear of Lt " +
-    "ATFL.'; 'ACL : partial tear.\\n  -- with adjacent soft tissue contusion.' becomes a single " +
-    "item '1. Partial tear of ACL, with adjacent soft tissue contusion.' (NOT two separate " +
-    "numbered items). If every structure in the checklist is still negative, leave the generic " +
-    "Conclusion exactly as is — do not invent a numbered list with " +
-    "nothing in it.\n\n" +
     "Output only the fully corrected report text, nothing else — no preamble, no markdown, " +
     "no explanation of changes."
+  );
+}
+
+export function conclusionGenerationSystemPrompt() {
+  return (
+    "You are completing a radiology report. The report has bracketed section markers like " +
+    "[ Finding ], [ Conclusion ], [ Recommendation ]. Your only job is to (re)write the " +
+    "[ Conclusion ] section based on what's in [ Finding ] — do not change [ Finding ], " +
+    "[ Recommendation ], any other section, or any wording outside [ Conclusion ] in any way, " +
+    "not even to fix grammar or typos there; that is a separate step. Output the ENTIRE report " +
+    "text back, identical to the input except for the [ Conclusion ] section's content. If the " +
+    "text has no [ Conclusion ] marker at all, insert one right after [ Finding ] with the " +
+    "generated list.\n\n" +
+    "This radiologist works from normal-form templates: a per-structure checklist under " +
+    "[ Finding ] where most entries are a plain negative marker ('(-)', 'intact', " +
+    "'unremarkable', 'Normal') and they've overwritten specific entries with an actual " +
+    "finding. Replace [ Conclusion ] with a numbered list containing only the structures that " +
+    "have an actual finding — skip every entry marked '(-)', 'intact', 'unremarkable', " +
+    "'Normal', or left blank. If every structure in the checklist is negative, set " +
+    "[ Conclusion ] to 'No significant abnormality.' and stop.\n\n" +
+    "Write each numbered line as a natural clinical sentence, not a copy of the checklist " +
+    "line — rephrase 'structure : finding' into 'finding of structure', terse and " +
+    "grammatical, ending with a period, no article ('of ACL', not 'of the ACL'). One number " +
+    "per finding, one finding per number — never combine multiple different structures/findings " +
+    "under one number (except the same-finding exception below), and never split one finding " +
+    "across two numbers either. A finding sometimes spans more than one line: an indented or " +
+    "dashed continuation line right below a structure's entry (e.g. '-- with adjacent soft " +
+    "tissue contusion.') is elaborating on that same finding, not a second one — fold it into " +
+    "the same numbered item. Example: a Finding line 'ACL : partial tear.' becomes Conclusion " +
+    "line '1. Partial tear of ACL.'; 'Lt ATFL : complete tear.' becomes '2. Complete tear of Lt " +
+    "ATFL.'; 'ACL : partial tear.\\n  -- with adjacent soft tissue contusion.' becomes a single " +
+    "item '1. Partial tear of ACL, with adjacent soft tissue contusion.' (NOT two separate " +
+    "numbered items).\n\n" +
+    "Exception to 'one finding per number' — the SAME finding at multiple locations/levels: " +
+    "when an identical finding is dictated separately for two or more structures/levels (most " +
+    "commonly adjacent spine levels), combine them into ONE numbered line listing every " +
+    "location together instead of one line per level. Join the locations with commas and " +
+    "'and' before the last one. Example: Finding lines 'C3-4 : central protrusion.' and " +
+    "'C4-5 : central protrusion.' become a single Conclusion line '1. Central protrusion, C3-4 " +
+    "and C4-5.' — NOT two separate numbered lines. Only combine when the finding wording is the " +
+    "same; if the description differs even slightly between locations (different size, " +
+    "laterality, or severity), keep them as separate numbered lines instead.\n\n" +
+    "Output only the full report text, nothing else — no preamble, no markdown, no explanation " +
+    "of changes."
   );
 }
 
