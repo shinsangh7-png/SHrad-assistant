@@ -115,6 +115,63 @@ def _drop_bare_section_headers(lines: list[str]) -> list[str]:
     return [ln for i, ln in enumerate(lines) if not _is_bare_section_header(ln, lines[i + 1] if i + 1 < len(lines) else None)]
 
 
+# A vertebral level range like "C3-4", "C3/4", "C3-C4", "L4-5", "T12-L1" — deliberately requires
+# the range part (not just "C3" or "T1") so it never collides with an MRI sequence name like
+# "T1"/"T2".
+_SPINE_LEVEL_RANGE_RE = re.compile(r"\b[CTLS]\d{1,2}[-/][CTLS]?\d{1,2}\b", re.IGNORECASE)
+
+
+def _finding_key_and_level(line: str) -> tuple[str, str] | None:
+    matches = list(_SPINE_LEVEL_RANGE_RE.finditer(line))
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    rest = line[: match.start()] + line[match.end():]
+    rest = re.sub(r"[,\s]+", " ", rest).strip(" ,.:")
+    return rest.lower(), match.group(0)
+
+
+def _join_levels(levels: list[str]) -> str:
+    if len(levels) == 1:
+        return levels[0]
+    if len(levels) == 2:
+        return f"{levels[0]} and {levels[1]}"
+    return f"{', '.join(levels[:-1])} and {levels[-1]}"
+
+
+# Same finding dictated once per level (e.g. "Central protrusion, C3-4." and "Central
+# protrusion, C4-5.") reads as one line per level, but a radiologist writing it out would say it
+# once with both levels. Merge lines whose text is identical apart from the level, keeping the
+# first line's position and wording, before the findings are numbered and sent to translation —
+# this way the strict 1:1 translation step downstream never has to know merging happened.
+def _merge_same_finding_lines(lines: list[str]) -> list[str]:
+    groups: dict[str, list[int]] = {}
+    parsed: dict[int, tuple[str, str]] = {}
+    for i, line in enumerate(lines):
+        parsed_line = _finding_key_and_level(line)
+        if parsed_line is None:
+            continue
+        key, level = parsed_line
+        parsed[i] = (key, level)
+        groups.setdefault(key, []).append(i)
+
+    replacements: dict[int, str] = {}
+    drop: set[int] = set()
+    for idxs in groups.values():
+        if len(idxs) < 2:
+            continue
+        first = idxs[0]
+        levels = [parsed[i][1] for i in idxs]
+        match = _SPINE_LEVEL_RANGE_RE.search(lines[first])
+        prefix = lines[first][: match.start()].rstrip(" ,")
+        suffix = lines[first][match.end():].lstrip(" ,")
+        combined = _join_levels(levels)
+        replacements[first] = f"{prefix}, {combined}{suffix}" if prefix else f"{combined}{suffix}"
+        drop.update(idxs[1:])
+
+    return [replacements.get(i, line) for i, line in enumerate(lines) if i not in drop]
+
+
 def _parse_conclusion_lines(raw: str) -> list[str]:
     lines = []
     for raw_line in raw.splitlines():
@@ -131,6 +188,7 @@ def generate_conclusion(findings_text: str, modality: str, body_region: str, pre
     client = get_client()
     lines = [ln.strip() for ln in findings_text.splitlines() if ln.strip()]
     lines = _drop_bare_section_headers(lines)
+    lines = _merge_same_finding_lines(lines)
     if not lines:
         return ""
 

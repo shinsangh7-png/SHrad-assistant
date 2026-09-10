@@ -213,17 +213,13 @@ async function correctOnly() {
   }
 }
 
-async function generateReport() {
+async function generateConclusionOnly() {
   if (!findingsText.value.trim()) {
     setReportStatus("Findings 내용이 없습니다.", true);
     return;
   }
-  setReportStatus("교정 중...");
+  setReportStatus("결론 생성 중...");
   try {
-    const corrected = await api.correctGrammar(findingsText.value, previousReport.value, reportMode);
-    findingsText.value = corrected.corrected_text;
-
-    setReportStatus("결론 생성 중...");
     const conclusion = await api.generateConclusion(
       findingsText.value,
       modalitySelect.value,
@@ -232,10 +228,32 @@ async function generateReport() {
     );
 
     fullReportText.value = `Finding:\n${findingsText.value}\n\nConclusion:\n${conclusion.conclusion}`;
-    setReportStatus("리포트 생성 완료");
+    setReportStatus("결론 생성 완료");
   } catch (e) {
-    setReportStatus(`리포트 생성 실패: ${e.message}`, true);
+    setReportStatus(`결론 생성 실패: ${e.message}`, true);
   }
+}
+
+function sortConclusionNumbers() {
+  const text = fullReportText.value;
+  const match = text.match(/^([\s\S]*?Conclusion:\n)([\s\S]*)$/);
+  if (!match) {
+    setReportStatus("Conclusion 섹션을 찾을 수 없습니다.", true);
+    return;
+  }
+  const [, before, conclusionBlock] = match;
+  const lines = conclusionBlock.split("\n").filter((l) => l.trim());
+  if (lines.length < 2) {
+    setReportStatus("정렬할 항목이 없습니다.", true);
+    return;
+  }
+  const parsed = lines.map((line) => {
+    const m = line.match(/^\s*(\d+)[.)]\s*(.*)$/);
+    return m ? { num: Number(m[1]), text: m[2] } : { num: Infinity, text: line };
+  });
+  parsed.sort((a, b) => a.num - b.num);
+  fullReportText.value = before + parsed.map((p, i) => `${i + 1}. ${p.text}`).join("\n");
+  setReportStatus("Conclusion 번호 정렬 완료");
 }
 
 async function copyReport() {
@@ -423,9 +441,10 @@ async function submitQuestion() {
 
 micToggleBtn.addEventListener("click", toggleRecording);
 document.getElementById("correct-only-btn").addEventListener("click", correctOnly);
-document.getElementById("generate-report-btn").addEventListener("click", generateReport);
+document.getElementById("generate-report-btn").addEventListener("click", generateConclusionOnly);
 document.getElementById("new-report-btn").addEventListener("click", resetForm);
 document.getElementById("copy-report-btn").addEventListener("click", copyReport);
+document.getElementById("sort-conclusion-btn").addEventListener("click", sortConclusionNumbers);
 document.getElementById("open-ddx-btn").addEventListener("click", () => openCheckpointsModal("ddx"));
 document.getElementById("open-additional-btn").addEventListener("click", () => openCheckpointsModal("additional"));
 keyImagesDropzone.addEventListener("paste", handleKeyImagePaste);
