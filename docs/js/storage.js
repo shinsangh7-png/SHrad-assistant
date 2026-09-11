@@ -5,6 +5,13 @@ const KEYS = {
   templates: "sh-rad.templates",
   templatesSeededDefaults: "sh-rad.templates.seededDefaults",
   templateParts: "sh-rad.templateParts",
+  consult: "sh-rad.consult",
+};
+
+const DEFAULT_CONSULT_MODELS = {
+  gpt: "gpt-5.1",
+  gemini: "gemini-3-pro-latest",
+  claude: "claude-sonnet-5",
 };
 
 // Starter body-part list per modality, seeded once per modality (not globally) into
@@ -248,6 +255,36 @@ export const storage = {
       const all = readJson(KEYS.templates, {});
       all[`${modality}::${part}`] = text;
       writeJson(KEYS.templates, all);
+    },
+  },
+
+  // --- AI 문의 (consult) tab preferences -- kept in its own key so the main
+  // Settings modal's save (which writes a fixed field list) never clobbers it.
+  consult: {
+    getModels() {
+      const saved = readJson(KEYS.consult, {}).models || {};
+      return { ...DEFAULT_CONSULT_MODELS, ...saved };
+    },
+    setModel(provider, model) {
+      const all = readJson(KEYS.consult, {});
+      all.models = { ...DEFAULT_CONSULT_MODELS, ...(all.models || {}), [provider]: model };
+      writeJson(KEYS.consult, all);
+    },
+    getActiveProvider() {
+      return readJson(KEYS.consult, {}).activeProvider || "gpt";
+    },
+    setActiveProvider(provider) {
+      const all = readJson(KEYS.consult, {});
+      all.activeProvider = provider;
+      writeJson(KEYS.consult, all);
+    },
+    getLastConversationId(provider) {
+      return (readJson(KEYS.consult, {}).lastConversationId || {})[provider] || null;
+    },
+    setLastConversationId(provider, id) {
+      const all = readJson(KEYS.consult, {});
+      all.lastConversationId = { ...(all.lastConversationId || {}), [provider]: id };
+      writeJson(KEYS.consult, all);
     },
   },
 };
