@@ -13,13 +13,17 @@ const MAX_TERMS_PROMPT_CHARS = 300;
 const MAX_PLAUSIBLE_WORDS_PER_SEC = 4.5;
 const SUSPECT_WORD_MARGIN = 3;
 
-// Hangul, Hiragana/Katakana, CJK ideographs -- none belong in an English-only transcript.
-// gpt-4o-transcribe occasionally renders a jargon word/phrase in one of these scripts even
-// with language=en and an English prompt set (confirmed happening on real dictation; not
-// reproducible with synthetic TTS audio in this environment, so the trigger is presumably
-// something about real speech -- accent, mic, prosody -- that clean TTS doesn't have). Since
-// the same input doesn't fail every time, retrying once resolves most occurrences.
-const NON_LATIN_SCRIPT_RE = /[぀-ヿ가-힣一-鿿]/;
+// Hangul, Hiragana/Katakana, CJK ideographs, Greek, Cyrillic, Armenian, Hebrew, Arabic,
+// Devanagari, Thai, Georgian -- none belong in an English-only transcript. gpt-4o-transcribe
+// occasionally renders a jargon word/phrase phonetically in one of these scripts instead of
+// English even with language=en and an English prompt set (confirmed happening on real
+// dictation for Hangul/CJK originally, and later for Greek on a phrase like "parameniscal
+// cyst" -- so this isn't limited to CJK, any non-Latin script is fair game; not reproducible
+// with synthetic TTS audio in this environment, so the trigger is presumably something about
+// real speech -- accent, mic, prosody -- that clean TTS doesn't have). Since the same input
+// doesn't fail every time, retrying once resolves most occurrences.
+const NON_LATIN_SCRIPT_RE =
+  /[぀-ヿ가-힣一-鿿Ͱ-Ͽἀ-῿Ѐ-ԯ԰-֏֐-׿؀-ۿऀ-ॿ฀-๿Ⴀ-ჿ]/;
 const MAX_LANGUAGE_LOCK_ATTEMPTS = 2;
 
 // gpt-4o-transcribe never returns "no speech" for non-speech audio — it fabricates a
