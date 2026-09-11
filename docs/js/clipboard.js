@@ -1,20 +1,21 @@
-// navigator.clipboard.writeText silently rejects in some browsers/contexts (window not
-// focused at the moment of the call, permission not yet granted, older WebView) -- which is
-// why "Copy" worked sometimes and not others. Fall back to the older execCommand("copy") path
-// (via a throwaway textarea) whenever the modern API is unavailable or fails.
+// Try the classic execCommand("copy") path FIRST. It's synchronous, so it runs to completion
+// inside the same click gesture that triggered it. navigator.clipboard.writeText() is async --
+// if that promise takes even one extra macrotask (a permission check, the window regaining
+// focus, etc.) the browser can decide the user gesture has expired and silently reject, which
+// is what made Copy work only sometimes. Falling back to the async Clipboard API second still
+// covers the rare case where execCommand itself is unavailable.
 export async function copyToClipboard(text) {
+  const previousActive = document.activeElement;
+  if (copyWithExecCommand(text, previousActive)) return;
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch (e) {
-      // fall through to the legacy fallback below
-    }
+    await navigator.clipboard.writeText(text);
+    return;
   }
-  copyWithExecCommand(text);
+  throw new Error("클립보드 복사에 실패했습니다.");
 }
 
-function copyWithExecCommand(text) {
+function copyWithExecCommand(text, restoreFocusTo) {
   const ta = document.createElement("textarea");
   ta.value = text;
   ta.setAttribute("readonly", "");
@@ -31,5 +32,8 @@ function copyWithExecCommand(text) {
     ok = false;
   }
   document.body.removeChild(ta);
-  if (!ok) throw new Error("클립보드 복사에 실패했습니다.");
+  if (ok && restoreFocusTo && typeof restoreFocusTo.focus === "function") {
+    restoreFocusTo.focus();
+  }
+  return ok;
 }

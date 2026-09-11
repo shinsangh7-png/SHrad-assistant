@@ -234,15 +234,15 @@ button:disabled {
 }
 
 .transcript-wrap {
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
+  position: relative;
+  /* Establishes a local stacking context so .line-preview-highlight's negative z-index below
+     stays scoped to this box (behind the textarea's own painted text) instead of escaping to
+     compete with unrelated content elsewhere on the page. */
+  z-index: 0;
   margin-bottom: 8px;
 }
 
 #transcript-text {
-  flex: 1 1 auto;
-  min-width: 0;
   width: 100%;
   height: 200px;
   resize: vertical;
@@ -250,18 +250,44 @@ button:disabled {
   line-height: 1.6;
   border-radius: var(--radius-md);
   margin-bottom: 0;
+  /* Transparent so .line-preview-highlight (a sibling positioned behind it) shows through
+     around the text -- a native textarea can't have a child overlay painted under its own
+     text, so the highlight lives outside it instead and relies on this. */
+  background: transparent;
+  /* Reserve room on the right so wrapped text never runs under the copy-mark column. */
+  padding-right: 30px;
+  scrollbar-gutter: stable;
+}
+
+#transcript-text::selection {
+  background: var(--accent-soft);
+}
+
+.line-preview-highlight {
+  position: absolute;
+  /* A plain (non-positioned) <textarea> always paints above a positioned sibling regardless of
+     DOM order or z-index -- except a negative z-index, which paints even earlier than that.
+     This is what actually puts the highlight behind the textarea's text instead of over it. */
+  z-index: -1;
+  left: 1px;
+  right: 1px;
+  display: none;
+  background: var(--accent-soft);
+  border-radius: 3px;
+  pointer-events: none;
 }
 
 .line-copy-overlay {
-  position: relative;
-  flex: 0 0 14px;
-  width: 14px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
 }
 
 .line-copy-handle {
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: 1px;
+  right: 1px;
   border-radius: 3px;
   background: var(--border);
   cursor: ns-resize;

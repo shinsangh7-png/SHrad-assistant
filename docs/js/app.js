@@ -284,9 +284,12 @@ copyBtn.addEventListener("click", async () => {
 });
 
 // --- Per-line copy handles (drag the small marks right of the textarea) ---
-attachLineCopyHandles(transcriptText, document.getElementById("line-copy-overlay"), {
-  onStatus: setMicStatus,
-});
+attachLineCopyHandles(
+  transcriptText,
+  document.getElementById("line-copy-overlay"),
+  document.getElementById("line-preview-highlight"),
+  { onStatus: setMicStatus }
+);
 
 // --- Check (Claude / Gemini / GPT checkpoint comparison, each fetched lazily per tab) ---
 const checkModal = document.getElementById("check-modal");
