@@ -14,15 +14,15 @@
 <body>
   <div class="app">
     <div id="tab-transcribe" class="tab-panel">
-      <textarea id="transcript-text" placeholder="F6을 눌러 전사를 시작하세요."></textarea>
+      <div class="transcript-wrap">
+        <textarea id="transcript-text" placeholder="F6을 눌러 전사를 시작하세요."></textarea>
+        <div id="line-copy-overlay" class="line-copy-overlay" title="클릭: 한 줄 복사 / 드래그: 여러 줄 복사"></div>
+      </div>
 
       <div class="action-row">
-        <button class="action-sm" data-tab="tab-rules">규칙</button>
         <button class="action-sm" data-tab="tab-templates">Template</button>
         <button id="correct-btn" class="primary action-sm">Correction</button>
         <button id="conclusion-btn" class="action-sm" title="Finding을 바탕으로 Conclusion만 생성">Conclusion</button>
-        <button id="sort-btn" class="action-sm" title="Conclusion 번호를 사용자가 매긴 순서로 재배치">정렬</button>
-        <button id="check-btn" class="action-sm" title="감별진단 및 체크포인트 확인">Check</button>
         <button id="copy-btn" class="action-sm" title="Finding/Conclusion/Recommendation을 Tab으로 구분해 복사 (PACS 붙여넣기용)">Copy</button>
         <button id="reset-btn" class="action-sm" title="내용 지우기">Reset</button>
         <button id="settings-btn" class="icon-btn" title="설정">⚙</button>
@@ -30,6 +30,11 @@
           <span class="rec-dot"></span>
           <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0H3a9 9 0 0 0 8 8.94V22h2v-2.06A9 9 0 0 0 21 11h-2z"/></svg>
         </button>
+      </div>
+      <div class="action-row">
+        <button class="action-sm" data-tab="tab-rules">변환</button>
+        <button id="check-btn" class="action-sm" title="감별진단 및 체크포인트 확인">REFER</button>
+        <button id="sort-btn" class="action-sm" title="Conclusion 번호를 사용자가 매긴 순서로 재배치">정렬</button>
       </div>
 
       <div class="status-msg bottom-status" id="mic-status"></div>

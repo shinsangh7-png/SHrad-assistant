@@ -233,14 +233,45 @@ button:disabled {
   display: none;
 }
 
+.transcript-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
 #transcript-text {
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
   height: 200px;
   resize: vertical;
   font-size: 13px;
   line-height: 1.6;
   border-radius: var(--radius-md);
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+.line-copy-overlay {
+  position: relative;
+  flex: 0 0 14px;
+  width: 14px;
+}
+
+.line-copy-handle {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 3px;
+  background: var(--border);
+  cursor: ns-resize;
+  touch-action: none;
+  transition: background 0.1s ease;
+}
+
+.line-copy-handle:hover,
+.line-copy-handle.active {
+  background: var(--accent);
 }
 
 .status-msg {
@@ -258,8 +289,8 @@ button:disabled {
 
 .action-sm {
   flex: 0 0 auto;
-  padding: 6px 11px;
-  font-size: 12px;
+  padding: 5px 10px;
+  font-size: 11px;
 }
 
 #settings-btn {

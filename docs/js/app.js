@@ -3,6 +3,8 @@ import { correctGrammar, generateConclusion } from "./anthropic-client.js";
 import { getCheckpointsClaude, getCheckpointsGemini, getCheckpointsGpt } from "./checkpoints-client.js";
 import { Dictation } from "./dictation.js";
 import { insertAtCursor } from "./cursor-insert.js";
+import { copyToClipboard } from "./clipboard.js";
+import { attachLineCopyHandles } from "./line-copy.js";
 
 const transcriptText = document.getElementById("transcript-text");
 const startBtn = document.getElementById("start-btn");
@@ -274,11 +276,16 @@ copyBtn.addEventListener("mousedown", (e) => e.preventDefault());
 copyBtn.addEventListener("click", async () => {
   const payload = buildPacsCopyText(transcriptText.value);
   try {
-    await navigator.clipboard.writeText(payload);
+    await copyToClipboard(payload);
     setMicStatus("복사됨 (Tab 구분, PACS에 붙여넣기)");
   } catch (e) {
     setMicStatus(`복사 실패: ${e.message}`, true);
   }
+});
+
+// --- Per-line copy handles (drag the small marks right of the textarea) ---
+attachLineCopyHandles(transcriptText, document.getElementById("line-copy-overlay"), {
+  onStatus: setMicStatus,
 });
 
 // --- Check (Claude / Gemini / GPT checkpoint comparison, each fetched lazily per tab) ---
