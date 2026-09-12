@@ -714,17 +714,24 @@ button:disabled {
 .consult-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   flex: 0 0 auto;
 }
 
-.consult-model-input {
-  flex: 1;
-  font-size: 11px;
-  padding: 5px 8px;
+/* Tucked into the header corner, next to the settings gear -- small and out of the way since
+   the default per-provider model is right for almost everyone almost all the time. */
+.consult-model-select {
+  font-size: 10px;
   color: var(--muted);
-  border-color: var(--border-soft);
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  max-width: 130px;
+}
+
+.consult-model-select:focus {
+  box-shadow: none;
 }
 
 .consult-messages {

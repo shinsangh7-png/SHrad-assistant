@@ -1,6 +1,11 @@
 import { storage } from "./storage.js";
 import { CHAT_CLIENTS, PROVIDER_LABELS, readFileAsImage } from "./chat-clients.js";
-import { radiologyConsultSystemPrompt, pptSummarySystemPrompt, extractJson } from "./consult-prompts.js";
+import {
+  radiologyConsultSystemPrompt,
+  pptSummarySystemPrompt,
+  googleSearchQuerySystemPrompt,
+  extractJson,
+} from "./consult-prompts.js";
 import { copyToClipboard } from "./clipboard.js";
 import {
   listConversations,
@@ -14,12 +19,32 @@ import {
 
 const PROVIDERS = ["gpt", "gemini", "claude"];
 
+// A short, curated list per provider rather than free text -- model names change often enough
+// that a text field just invites typos; picking from a known-good list is safer day to day.
+const MODEL_OPTIONS = {
+  gpt: [
+    { value: "gpt-5.1", label: "gpt-5.1 (기본)" },
+    { value: "gpt-5.1-mini", label: "gpt-5.1-mini (경량)" },
+    { value: "gpt-4o", label: "gpt-4o" },
+  ],
+  gemini: [
+    { value: "gemini-3-pro-latest", label: "gemini-3-pro (기본)" },
+    { value: "gemini-3-flash-latest", label: "gemini-3-flash (경량)" },
+    { value: "gemini-2.5-pro", label: "gemini-2.5-pro" },
+  ],
+  claude: [
+    { value: "claude-sonnet-5", label: "claude-sonnet-5 (기본)" },
+    { value: "claude-opus-5", label: "claude-opus-5 (고급)" },
+    { value: "claude-haiku-4-5-20251001", label: "claude-haiku-4.5 (경량)" },
+  ],
+};
+
 const els = {
   tabButtons: document.querySelectorAll(".consult-provider-tabs .consult-tab"),
   newPatientBtn: document.getElementById("consult-new-patient-btn"),
   sidebarList: document.getElementById("consult-conversation-list"),
   convSelect: document.getElementById("consult-conv-select"),
-  modelInput: document.getElementById("consult-model-input"),
+  modelSelect: document.getElementById("consult-model-select"),
   messages: document.getElementById("consult-messages"),
   attachments: document.getElementById("consult-attachments"),
   attachBtn: document.getElementById("consult-attach-btn"),
@@ -28,6 +53,7 @@ const els = {
   sendBtn: document.getElementById("consult-send-btn"),
   status: document.getElementById("consult-status"),
   pptBtn: document.getElementById("consult-ppt-btn"),
+  googleBtn: document.getElementById("consult-google-btn"),
   pptModal: document.getElementById("ppt-modal"),
   pptStatus: document.getElementById("ppt-modal-status"),
   pptSlides: document.getElementById("ppt-slides-container"),
@@ -222,11 +248,32 @@ function autoTitle(conv) {
   }
 }
 
+function renderModelOptions(provider) {
+  const current = storage.consult.getModels()[provider];
+  const options = MODEL_OPTIONS[provider];
+  els.modelSelect.innerHTML = "";
+  options.forEach(({ value, label }) => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    els.modelSelect.appendChild(opt);
+  });
+  // A previously-saved custom value (from before this became a fixed list) shouldn't just
+  // silently reset to the default -- keep it selectable even though it's off the curated list.
+  if (!options.some((o) => o.value === current)) {
+    const opt = document.createElement("option");
+    opt.value = current;
+    opt.textContent = current;
+    els.modelSelect.appendChild(opt);
+  }
+  els.modelSelect.value = current;
+}
+
 async function switchProvider(provider) {
   activeProvider = provider;
   storage.consult.setActiveProvider(provider);
   els.tabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.provider === provider));
-  els.modelInput.value = storage.consult.getModels()[provider];
+  renderModelOptions(provider);
   pendingAttachments = [];
   renderAttachments();
   setStatus("");
@@ -385,6 +432,15 @@ function renderPptSlides(slides) {
   };
 }
 
+function buildTranscript(conv) {
+  return conv.messages
+    .map((m) => {
+      const imgNote = m.images?.length ? ` [이미지 ${m.images.length}장 첨부됨]` : "";
+      return `${m.role === "user" ? "Q" : "A"}: ${m.text}${imgNote}`;
+    })
+    .join("\n\n");
+}
+
 async function openPptModal() {
   const conv = currentConv[activeProvider];
   if (!conv || conv.messages.length === 0) {
@@ -397,12 +453,7 @@ async function openPptModal() {
   els.pptStatus.style.color = "var(--muted)";
 
   try {
-    const transcript = conv.messages
-      .map((m) => {
-        const imgNote = m.images?.length ? ` [이미지 ${m.images.length}장 첨부됨]` : "";
-        return `${m.role === "user" ? "Q" : "A"}: ${m.text}${imgNote}`;
-      })
-      .join("\n\n");
+    const transcript = buildTranscript(conv);
     const model = storage.consult.getModels()[activeProvider];
     const raw = await CHAT_CLIENTS[activeProvider]({
       system: pptSummarySystemPrompt(),
@@ -417,6 +468,34 @@ async function openPptModal() {
   } catch (e) {
     els.pptStatus.textContent = e.message || String(e);
     els.pptStatus.style.color = "var(--danger)";
+  }
+}
+
+// Opens the tab synchronously (within the click gesture) and points it at the search only once
+// the query comes back -- opening it after the async model call instead would get silently
+// popup-blocked, since by then the browser no longer considers this a direct user action.
+async function openGoogleSearch() {
+  const conv = currentConv[activeProvider];
+  if (!conv || conv.messages.length === 0) {
+    setStatus("먼저 대화를 나눠주세요.", true);
+    return;
+  }
+  const tab = window.open("", "_blank");
+  setStatus("검색어 추출 중...");
+  try {
+    const model = storage.consult.getModels()[activeProvider];
+    const query = await CHAT_CLIENTS[activeProvider]({
+      system: googleSearchQuerySystemPrompt(),
+      messages: [{ role: "user", text: buildTranscript(conv), images: [] }],
+      model,
+    });
+    const cleaned = query.trim().replace(/^["']|["']$/g, "");
+    if (!cleaned) throw new Error("검색어를 추출하지 못했습니다.");
+    if (tab) tab.location.href = `https://www.google.com/search?q=${encodeURIComponent(cleaned)}`;
+    setStatus("");
+  } catch (e) {
+    if (tab) tab.close();
+    setStatus(e.message || String(e), true);
   }
 }
 
@@ -442,10 +521,11 @@ els.input.addEventListener("keydown", (e) => {
   }
 });
 els.sendBtn.addEventListener("click", sendMessage);
-els.modelInput.addEventListener("change", () => {
-  storage.consult.setModel(activeProvider, els.modelInput.value.trim());
+els.modelSelect.addEventListener("change", () => {
+  storage.consult.setModel(activeProvider, els.modelSelect.value);
 });
 els.pptBtn.addEventListener("click", openPptModal);
+els.googleBtn.addEventListener("click", openGoogleSearch);
 els.closePptModal.addEventListener("click", () => els.pptModal.classList.add("hidden"));
 els.pptModal.addEventListener("click", (e) => {
   if (e.target.id === "ppt-modal") els.pptModal.classList.add("hidden");

@@ -20,6 +20,7 @@
         <button class="consult-tab" data-provider="claude">Claude</button>
       </div>
       <select id="consult-conv-select" class="consult-conv-select"></select>
+      <select id="consult-model-select" class="consult-model-select" title="사용할 모델"></select>
       <button id="consult-settings-btn" class="icon-btn" title="API 키 설정">⚙</button>
     </div>
 
@@ -31,8 +32,8 @@
 
       <div class="consult-main">
         <div class="consult-toolbar">
-          <input type="text" id="consult-model-input" class="consult-model-input" title="모델명 (직접 수정 가능)" />
-          <button id="consult-ppt-btn" class="action-sm" title="이 환자 내용을 PPT 슬라이드로 요약">PPT</button>
+          <button id="consult-google-btn" class="action-sm" title="대화 내용에서 검색어를 뽑아 Google 검색">Export Google</button>
+          <button id="consult-ppt-btn" class="action-sm" title="이 환자 내용을 PPT 슬라이드로 요약">Export PPT</button>
         </div>
         <div id="consult-messages" class="consult-messages"></div>
         <div id="consult-attachments" class="consult-attachments"></div>

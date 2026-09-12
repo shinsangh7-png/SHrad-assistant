@@ -39,6 +39,17 @@ export function pptSummarySystemPrompt() {
   );
 }
 
+export function googleSearchQuerySystemPrompt() {
+  return (
+    "Read the radiology consult conversation below and produce ONE short Google search query " +
+    "that best captures the main topic discussed, suited for looking up reference material or " +
+    "literature on it (e.g. a specific finding, entity, or differential mentioned). Use precise " +
+    "English radiology/medical terminology, even if the conversation was in Korean. Output ONLY " +
+    "the query text itself -- no quotes, no explanation, no leading/trailing punctuation, nothing " +
+    "else. Keep it concise, roughly 3-8 words."
+  );
+}
+
 export function extractJson(text) {
   const cleaned = String(text || "")
     .trim()
