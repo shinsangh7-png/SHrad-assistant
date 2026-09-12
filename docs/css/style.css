@@ -614,19 +614,6 @@ button:disabled {
   gap: 4px;
 }
 
-.consult-header a.action-sm {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
-}
-
-.consult-header a.action-sm:hover {
-  background: var(--bg);
-}
-
 .check-tab, .consult-tab {
   background: none;
   border: none;
