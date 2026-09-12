@@ -1,6 +1,6 @@
 {
-  "name": "SH Rad AI 문의",
-  "short_name": "AI 문의",
+  "name": "Rad AI",
+  "short_name": "Rad AI",
   "start_url": "./consult.html",
   "scope": "./",
   "display": "standalone",
