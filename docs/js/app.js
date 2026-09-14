@@ -5,6 +5,7 @@ import { Dictation } from "./dictation.js";
 import { insertAtCursor } from "./cursor-insert.js";
 import { copyToClipboard } from "./clipboard.js";
 import { attachLineCopyHandles } from "./line-copy.js";
+import { restoreMarkerSpacing } from "./format-guard.js";
 
 const transcriptText = document.getElementById("transcript-text");
 const startBtn = document.getElementById("start-btn");
@@ -198,7 +199,9 @@ correctBtn.addEventListener("click", async () => {
   correctBtn.disabled = true;
   setMicStatus("교정 중...");
   try {
-    let corrected = await correctGrammar(transcriptText.value);
+    const original = transcriptText.value;
+    let corrected = await correctGrammar(original);
+    corrected = restoreMarkerSpacing(original, corrected);
     corrected = applyPostprocessingRules(corrected);
     transcriptText.value = corrected;
     setMicStatus("교정 완료.");
@@ -219,7 +222,9 @@ conclusionBtn.addEventListener("click", async () => {
   conclusionBtn.disabled = true;
   setMicStatus("Conclusion 생성 중...");
   try {
-    let result = await generateConclusion(transcriptText.value);
+    const original = transcriptText.value;
+    let result = await generateConclusion(original);
+    result = restoreMarkerSpacing(original, result);
     result = applyPostprocessingRules(result);
     transcriptText.value = result;
     setMicStatus("Conclusion 생성 완료.");

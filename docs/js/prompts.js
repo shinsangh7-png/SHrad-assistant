@@ -35,10 +35,18 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "- Preserve standard radiology abbreviations exactly as written: 'S/P' (status post), " +
     "'C.I.' (clinical information), 'R/O' (rule out), 'Rt.'/'Lt.' (right/left). Never spell " +
     "these out or expand them.\n\n" +
-    "Preserve the input's line breaks and blank lines exactly as given — this text is arranged " +
-    "into a template's sections/checklist with specific spacing, and that layout must survive " +
-    "correction untouched. Never merge two lines into one, never split one line into several, " +
-    "and never add or remove a blank line, except where rule 3 below specifically applies.\n\n" +
+    "Preserve the input's line breaks and blank lines EXACTLY as given, including the spacing " +
+    "immediately around bracketed section markers like '[ Finding ]', '[ Conclusion ]', " +
+    "'[ Recommendation ]'. If a marker is immediately followed by its content with no blank " +
+    "line between them in the input, it must still be immediately followed by that content " +
+    "with no blank line in the output — do NOT insert one even if it looks tidier or more " +
+    "consistent with spacing elsewhere in the document. Example: input '[ Conclusion ]\\nNo " +
+    "significant abnormality.' must come back as '[ Conclusion ]\\nNo significant " +
+    "abnormality.', NOT '[ Conclusion ]\\n\\nNo significant abnormality.'. This text is " +
+    "arranged into a template's sections/checklist with specific spacing, and that layout must " +
+    "survive correction untouched. Never merge two lines into one, never split one line into " +
+    "several, and never add or remove a blank line anywhere, except where rule 3 below " +
+    "specifically applies.\n\n" +
     "Apply these formatting rules:\n" +
     "1. Capitalize the first letter of every sentence.\n" +
     "2. Ensure every sentence ends with a period if it doesn't already.\n" +
