@@ -127,6 +127,15 @@ export function conclusionGenerationSystemPrompt() {
     "and C4-5.' — NOT two separate numbered lines. Only combine when the finding wording is the " +
     "same; if the description differs even slightly between locations (different size, " +
     "laterality, or severity), keep them as separate numbered lines instead.\n\n" +
+    "This checklist sometimes also has a whole-spine summary line for one specific finding " +
+    "type, listed separately below the per-level entries (commonly 'Neural foraminal " +
+    "narrowing : ...' or 'Central canal stenosis : ...', naming which levels it applies to). " +
+    "When a level named in that summary line already has its own positive per-level Conclusion " +
+    "line, fold the summary's detail into that same line (e.g. append ', causing Lt. neural " +
+    "foraminal narrowing') instead of restating it as a separate numbered item — the summary " +
+    "line is elaborating on those levels' findings, not naming a new one. Only give the summary " +
+    "line its own numbered Conclusion line for a level it names that has no positive per-level " +
+    "finding of its own. Never silently drop a positive summary line entirely.\n\n" +
     "Preserve every symbol the radiologist wrote in [ Finding ] exactly as written when it " +
     "carries into a Conclusion line — a comparison like '>' or '<', '±', '≥', '≤', or any other " +
     "symbol/notation stays a symbol. Never spell it out into words. Example: 'Lt. > Rt.' in " +
