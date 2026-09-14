@@ -127,6 +127,10 @@ export function conclusionGenerationSystemPrompt() {
     "and C4-5.' — NOT two separate numbered lines. Only combine when the finding wording is the " +
     "same; if the description differs even slightly between locations (different size, " +
     "laterality, or severity), keep them as separate numbered lines instead.\n\n" +
+    "Preserve every symbol the radiologist wrote in [ Finding ] exactly as written when it " +
+    "carries into a Conclusion line — a comparison like '>' or '<', '±', '≥', '≤', or any other " +
+    "symbol/notation stays a symbol. Never spell it out into words. Example: 'Lt. > Rt.' in " +
+    "[ Finding ] must still read 'Lt. > Rt.' in [ Conclusion ], NOT 'Lt. greater than Rt.'.\n\n" +
     "Output only the full report text, nothing else — no preamble, no markdown, no explanation " +
     "of changes."
   );
