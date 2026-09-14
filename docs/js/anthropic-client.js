@@ -2,6 +2,12 @@ import { storage } from "./storage.js";
 import { grammarCorrectionSystemPrompt, conclusionGenerationSystemPrompt } from "./prompts.js";
 
 const MODEL = "claude-haiku-4-5-20251001";
+// Conclusion generation has been observed dropping a real positive finding from the checklist
+// (e.g. a hedged "Deltoid ligament : r/o partial tear, Gr II" entry) even though the prompt only
+// tells it to skip plain negatives -- Haiku under-complying on this specific task, not a prompt
+// gap. Give it the stronger model; grammar correction stays on Haiku since that task hasn't
+// shown this failure mode.
+const CONCLUSION_MODEL = "claude-sonnet-5";
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 class MissingApiKeyError extends Error {}
@@ -12,9 +18,9 @@ function getApiKey() {
   return key;
 }
 
-async function callClaude(system, text) {
+async function callClaude(system, text, model = MODEL) {
   const body = {
-    model: MODEL,
+    model,
     max_tokens: 4096,
     temperature: 0.2,
     system,
@@ -47,7 +53,7 @@ export async function correctGrammar(text) {
 }
 
 export async function generateConclusion(text) {
-  return callClaude(conclusionGenerationSystemPrompt(), text);
+  return callClaude(conclusionGenerationSystemPrompt(), text, CONCLUSION_MODEL);
 }
 
 export { MissingApiKeyError };

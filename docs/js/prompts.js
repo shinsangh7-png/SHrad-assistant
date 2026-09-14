@@ -92,9 +92,19 @@ export function conclusionGenerationSystemPrompt() {
     "[ Finding ] where most entries are a plain negative marker ('(-)', 'intact', " +
     "'unremarkable', 'Normal') and they've overwritten specific entries with an actual " +
     "finding. Replace [ Conclusion ] with a numbered list containing only the structures that " +
-    "have an actual finding — skip every entry marked '(-)', 'intact', 'unremarkable', " +
-    "'Normal', or left blank. If every structure in the checklist is negative, set " +
-    "[ Conclusion ] to 'No significant abnormality.' and stop.\n\n" +
+    "have an actual finding — skip ONLY an entry marked exactly '(-)', 'intact', " +
+    "'unremarkable', 'Normal', or left blank. If every structure in the checklist is negative, " +
+    "set [ Conclusion ] to 'No significant abnormality.' and stop.\n\n" +
+    "A hedged or qualified finding is still a finding, not a negative — never skip an entry " +
+    "just because it's phrased as 'r/o' (rule out), 'suspected', 'probable', 'questionable', " +
+    "'cannot exclude', or similar. Example: 'Deltoid ligament : r/o partial tear, Gr II' is a " +
+    "positive entry and MUST get its own Conclusion line (e.g. '4. Probable partial tear of " +
+    "deltoid ligament, Grade II.' — keep the hedge word in the Conclusion sentence too, don't " +
+    "drop it and state it as definite). Before you finish, recount: every checklist entry under " +
+    "[ Finding ] that is not one of the exact negative markers above must be represented by " +
+    "exactly one Conclusion line (or folded into a same-finding merge per the exception below) " +
+    "— if your count doesn't match, you missed one; go back and add it rather than outputting " +
+    "an incomplete list.\n\n" +
     "Write each numbered line as a natural clinical sentence, not a copy of the checklist " +
     "line — rephrase 'structure : finding' into 'finding of structure', terse and " +
     "grammatical, ending with a period, no article ('of ACL', not 'of the ACL'). One number " +
