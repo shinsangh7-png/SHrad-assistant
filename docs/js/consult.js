@@ -110,6 +110,15 @@ function scrollMessagesToBottom() {
   els.messages.scrollTop = els.messages.scrollHeight;
 }
 
+// Models routinely answer with **bold** even though this UI has no markdown renderer, so it was
+// showing up as literal asterisks. Escape first (so this can never introduce real HTML/XSS from
+// model or user text) then allow just **bold** through as <strong> -- the one markdown feature
+// worth the trouble here.
+function renderInlineMarkdown(text) {
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+
 function renderMessages(conv) {
   els.messages.innerHTML = "";
   conv.messages.forEach((msg, idx) => {
@@ -130,7 +139,7 @@ function renderMessages(conv) {
 
     if (msg.text) {
       const textEl = document.createElement("div");
-      textEl.textContent = msg.text;
+      textEl.innerHTML = renderInlineMarkdown(msg.text);
       bubble.appendChild(textEl);
     }
 
