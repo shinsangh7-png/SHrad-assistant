@@ -25,12 +25,19 @@ if (-not (Test-Path $chrome)) {
 
 $url = "https://shinsangh7-png.github.io/SHrad-assistant/consult.html"
 
+# A --app shortcut shows Chrome's own icon unless it's given a real .ico file, so download the
+# app's icon once to a local, stable path (Windows shortcut icons can't point at a remote URL).
+$iconDir = Join-Path $env:LOCALAPPDATA "RadAI"
+New-Item -ItemType Directory -Force -Path $iconDir | Out-Null
+$iconPath = Join-Path $iconDir "icon-radai.ico"
+Invoke-WebRequest -Uri "https://shinsangh7-png.github.io/SHrad-assistant/icon-radai.ico" -OutFile $iconPath
+
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $chrome
 $shortcut.Arguments = "--profile-directory=`"RadAI`" --app=`"$url`""
 $shortcut.WorkingDirectory = Split-Path $chrome
-$shortcut.IconLocation = "$chrome,0"
+$shortcut.IconLocation = "$iconPath,0"
 $shortcut.Description = "Rad AI - GPT/Gemini/Claude 영상의학 문의 (별도 Chrome 프로필)"
 $shortcut.Save()
 
