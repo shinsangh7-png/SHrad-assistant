@@ -35,27 +35,35 @@ export function radiologyConsultSystemPrompt() {
 
 export function pptSummarySystemPrompt() {
   return (
-    "Summarize the radiology consult conversation below into 1-2 slides, but as a GENERALIZED " +
-    "reference note, not a record of this case. Extract only the general medical/radiology " +
-    "knowledge that was actually discussed -- grading systems, imaging criteria, measurement " +
-    "thresholds, differential reasoning, pitfalls -- and strip out everything specific to this " +
-    "one patient (age, sex, exact history, mechanism of injury, 'this patient'/'이 환자' framing, " +
-    "any personal identifiers). The goal is a reusable study note this radiologist can look back " +
-    "on for ANY future case with the same finding, not a summary of what happened in this one.\n\n" +
-    "Write it the way a Korean radiologist actually writes personal study notes: terse and " +
-    "compact, Korean particles/connectors linking English medical terms kept in English exactly " +
-    "as normally used -- NOT full English descriptive sentences, NOT textbook prose. Every bullet " +
-    "must be short enough to scan in a couple seconds, like a flashcard, never a paragraph. For " +
-    "example write 'Meyerding grade: I 0-25%, II 25-50%, III 50-75%, IV 75-100%, >100%면 " +
-    "spondyloptosis' -- NOT 'Meyerding grade I: 0-25% slip; II: 25-50%; III: 50-75%; IV: 75-100%; " +
-    ">100% termed spondyloptosis.' Compress this way even if the conversation itself was in " +
-    "English.\n\n" +
+    "Summarize the radiology consult conversation below into 1-2 slides of GENERAL medical/" +
+    "radiology knowledge only -- a personal study note, not a case record and not a reporting " +
+    "guide.\n\n" +
+    "Strip out completely:\n" +
+    "- Anything specific to this one patient: age, sex, history, mechanism, 'this patient'/'이 " +
+    "환자' framing.\n" +
+    "- Any report-wording suggestions, example Finding/Impression phrases, or 'how to phrase " +
+    "this' tips -- even if they were part of the conversation, they don't belong here.\n" +
+    "- Any quoted example sentences of any kind.\n\n" +
+    "Keep only the underlying medical facts: grading/staging systems, imaging criteria, " +
+    "measurement thresholds, mechanism, differential diagnosis and what actually discriminates " +
+    "between the options. This should read like a flashcard the radiologist made for themselves " +
+    "to recall next time they see this finding on ANY patient -- not a summary of what was said " +
+    "in this conversation.\n\n" +
+    "Write it the way a Korean radiologist writes personal study notes: extremely terse, Korean " +
+    "particles/connectors linking English medical terms kept in English -- never full English " +
+    "sentences, never textbook prose, never a quoted phrase. Each bullet must be one short line, " +
+    "well under 15 words -- if you can't state it that short, split it into two bullets instead " +
+    "of writing one long one. Aim for 3-5 bullets per slide, not more. Compress this way even if " +
+    "the conversation itself was in English.\n\n" +
+    "Example of the right density/style: 'Meyerding grade: I 0-25%, II 25-50%, III 50-75%, IV " +
+    "75-100%, >100%면 spondyloptosis.' / 'Focal fibula medullary edema, cortex 정상 -> contusion " +
+    "우선, diffuse/symmetric이면 red marrow 감별.'\n\n" +
     'Return ONLY JSON matching this shape: {"slides": [{"title": string, "bullets": [string, ...]}]} ' +
     "-- no markdown fence, no commentary, nothing but the JSON object.\n\n" +
     "Use 1 slide if the topic is simple, 2 if there's enough distinct content (e.g. slide 1: " +
-    "imaging findings/criteria/grading, slide 2: differential diagnosis + key discriminators). " +
-    "Only include knowledge points that were actually discussed; never introduce something new " +
-    "that wasn't part of the conversation."
+    "imaging criteria/grading, slide 2: differential diagnosis + key discriminators). Only " +
+    "include knowledge points that were actually discussed; never introduce something new that " +
+    "wasn't part of the conversation."
   );
 }
 
