@@ -104,7 +104,7 @@ async function transcribeAudio(blob) {
   const basePrompt = `English radiology report dictation. Use correct radiology terminology and standard abbreviations.${termsHint}`;
 
   async function callOnce() {
-    if (model === "gemini-2.0-flash") {
+    if (model === "gemini-3.6-flash") {
       const geminiPrompt =
         `Transcribe the following audio recording verbatim, in English only. ${basePrompt} ` +
         `Output only the transcription text, nothing else -- no preamble, no explanation, no markdown.`;
