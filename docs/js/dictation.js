@@ -110,7 +110,7 @@ async function transcribeAudio(blob) {
         `Output only the transcription text, nothing else -- no preamble, no explanation, no markdown.`;
       return callGeminiTranscription(blob, settings.geminiApiKey, geminiPrompt, model);
     }
-    if (model === "whisper-large-v3") {
+    if (model === "whisper-large-v3" || model === "whisper-large-v3-turbo") {
       if (!settings.groqApiKey) throw new Error("Groq API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
       return callOpenAiCompatibleTranscription(
         blob,
