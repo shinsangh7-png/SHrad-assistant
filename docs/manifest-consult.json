@@ -2,7 +2,7 @@
   "name": "Rad AI",
   "short_name": "Rad AI",
   "start_url": "./consult.html",
-  "scope": "./",
+  "scope": "./consult.html",
   "display": "standalone",
   "background_color": "#f5f5f7",
   "theme_color": "#f5f5f7",
