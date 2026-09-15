@@ -1,10 +1,15 @@
 import { storage } from "./storage.js";
-import { CHAT_CLIENTS, PROVIDER_LABELS, readFileAsImage, searchTopImage } from "./chat-clients.js";
+import {
+  CHAT_CLIENTS,
+  SLIDES_CLIENTS,
+  PROVIDER_LABELS,
+  readFileAsImage,
+  searchTopImage,
+} from "./chat-clients.js";
 import {
   radiologyConsultSystemPrompt,
   pptSummarySystemPrompt,
   googleSearchQuerySystemPrompt,
-  extractJson,
 } from "./consult-prompts.js";
 import { copyToClipboard } from "./clipboard.js";
 import {
@@ -482,13 +487,11 @@ async function openPptModal() {
   try {
     const transcript = buildTranscript(conv);
     const model = storage.consult.getModels()[activeProvider];
-    const raw = await CHAT_CLIENTS[activeProvider]({
+    const slides = await SLIDES_CLIENTS[activeProvider]({
       system: pptSummarySystemPrompt(),
-      messages: [{ role: "user", text: transcript, images: [] }],
+      text: transcript,
       model,
     });
-    const parsed = extractJson(raw);
-    const slides = Array.isArray(parsed?.slides) ? parsed.slides : [];
     if (!slides.length) throw new Error("요약 결과가 비어 있습니다.");
     els.pptStatus.textContent = "";
     const imageSlots = renderPptSlides(slides);

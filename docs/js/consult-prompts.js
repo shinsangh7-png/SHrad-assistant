@@ -58,8 +58,6 @@ export function pptSummarySystemPrompt() {
     "Example of the right density/style: 'Meyerding grade: I 0-25%, II 25-50%, III 50-75%, IV " +
     "75-100%, >100%면 spondyloptosis.' / 'Focal fibula medullary edema, cortex 정상 -> contusion " +
     "우선, diffuse/symmetric이면 red marrow 감별.'\n\n" +
-    'Return ONLY JSON matching this shape: {"slides": [{"title": string, "bullets": [string, ...]}]} ' +
-    "-- no markdown fence, no commentary, nothing but the JSON object.\n\n" +
     "Use 1 slide if the topic is simple, 2 if there's enough distinct content (e.g. slide 1: " +
     "imaging criteria/grading, slide 2: differential diagnosis + key discriminators). Only " +
     "include knowledge points that were actually discussed; never introduce something new that " +
@@ -76,12 +74,4 @@ export function googleSearchQuerySystemPrompt() {
     "the query text itself -- no quotes, no explanation, no leading/trailing punctuation, nothing " +
     "else. Keep it concise, roughly 3-8 words."
   );
-}
-
-export function extractJson(text) {
-  const cleaned = String(text || "")
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/, "");
-  return JSON.parse(cleaned);
 }
