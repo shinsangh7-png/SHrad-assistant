@@ -35,14 +35,27 @@ export function radiologyConsultSystemPrompt() {
 
 export function pptSummarySystemPrompt() {
   return (
-    "Summarize the radiology consult conversation below into 1-2 presentation slides for a teaching " +
-    'file or case conference. Return ONLY JSON matching this shape: {"slides": [{"title": string, ' +
-    '"bullets": [string, ...]}]} -- no markdown fence, no commentary, nothing but the JSON object.\n\n' +
-    "Use 1 slide if the case is simple, 2 if there's enough distinct content (a natural split is " +
-    "slide 1: clinical info + imaging findings, slide 2: differential diagnosis + conclusion/" +
-    "recommendation). Each bullet must be a short, complete, presentation-ready line -- no markdown, " +
-    "no numbering prefix. Only include what was actually discussed in the conversation; never " +
-    "introduce a new finding or opinion that wasn't already stated."
+    "Summarize the radiology consult conversation below into 1-2 slides, but as a GENERALIZED " +
+    "reference note, not a record of this case. Extract only the general medical/radiology " +
+    "knowledge that was actually discussed -- grading systems, imaging criteria, measurement " +
+    "thresholds, differential reasoning, pitfalls -- and strip out everything specific to this " +
+    "one patient (age, sex, exact history, mechanism of injury, 'this patient'/'이 환자' framing, " +
+    "any personal identifiers). The goal is a reusable study note this radiologist can look back " +
+    "on for ANY future case with the same finding, not a summary of what happened in this one.\n\n" +
+    "Write it the way a Korean radiologist actually writes personal study notes: terse and " +
+    "compact, Korean particles/connectors linking English medical terms kept in English exactly " +
+    "as normally used -- NOT full English descriptive sentences, NOT textbook prose. Every bullet " +
+    "must be short enough to scan in a couple seconds, like a flashcard, never a paragraph. For " +
+    "example write 'Meyerding grade: I 0-25%, II 25-50%, III 50-75%, IV 75-100%, >100%면 " +
+    "spondyloptosis' -- NOT 'Meyerding grade I: 0-25% slip; II: 25-50%; III: 50-75%; IV: 75-100%; " +
+    ">100% termed spondyloptosis.' Compress this way even if the conversation itself was in " +
+    "English.\n\n" +
+    'Return ONLY JSON matching this shape: {"slides": [{"title": string, "bullets": [string, ...]}]} ' +
+    "-- no markdown fence, no commentary, nothing but the JSON object.\n\n" +
+    "Use 1 slide if the topic is simple, 2 if there's enough distinct content (e.g. slide 1: " +
+    "imaging findings/criteria/grading, slide 2: differential diagnosis + key discriminators). " +
+    "Only include knowledge points that were actually discussed; never introduce something new " +
+    "that wasn't part of the conversation."
   );
 }
 
