@@ -1,5 +1,5 @@
 import { storage } from "./storage.js";
-import { CHAT_CLIENTS, PROVIDER_LABELS, readFileAsImage } from "./chat-clients.js";
+import { CHAT_CLIENTS, PROVIDER_LABELS, readFileAsImage, searchTopImage } from "./chat-clients.js";
 import {
   radiologyConsultSystemPrompt,
   pptSummarySystemPrompt,
@@ -67,6 +67,8 @@ const els = {
   openaiKeyInput: document.getElementById("consult-openai-key-input"),
   geminiKeyInput: document.getElementById("consult-gemini-key-input"),
   anthropicKeyInput: document.getElementById("consult-anthropic-key-input"),
+  googleSearchKeyInput: document.getElementById("consult-google-search-key-input"),
+  googleSearchCxInput: document.getElementById("consult-google-search-cx-input"),
 };
 
 let activeProvider = storage.consult.getActiveProvider();
@@ -405,6 +407,7 @@ function slideToText(slide) {
 
 function renderPptSlides(slides) {
   els.pptSlides.innerHTML = "";
+  const imageSlots = [];
   slides.forEach((slide, i) => {
     const card = document.createElement("div");
     card.className = "ppt-slide-card";
@@ -412,6 +415,10 @@ function renderPptSlides(slides) {
     const title = document.createElement("div");
     title.className = "ppt-slide-title";
     title.textContent = `${i + 1}. ${slide.title || ""}`;
+
+    const imageSlot = document.createElement("div");
+    imageSlot.className = "ppt-slide-image-slot";
+    imageSlots.push(imageSlot);
 
     const list = document.createElement("ul");
     list.className = "ppt-slide-bullets";
@@ -430,7 +437,7 @@ function renderPptSlides(slides) {
       setTimeout(() => (copyBtn.textContent = "복사"), 1000);
     });
 
-    card.append(title, list, copyBtn);
+    card.append(title, imageSlot, list, copyBtn);
     els.pptSlides.appendChild(card);
   });
 
@@ -439,6 +446,17 @@ function renderPptSlides(slides) {
     els.pptCopyAllBtn.textContent = "복사됨";
     setTimeout(() => (els.pptCopyAllBtn.textContent = "전체 복사"), 1000);
   };
+
+  return imageSlots;
+}
+
+function attachSlideImage(imageSlot, url) {
+  const img = document.createElement("img");
+  img.className = "ppt-slide-image";
+  img.src = url;
+  img.alt = "";
+  img.title = "PPT로 드래그하거나 우클릭 -> 이미지 복사";
+  imageSlot.appendChild(img);
 }
 
 function buildTranscript(conv) {
@@ -473,7 +491,15 @@ async function openPptModal() {
     const slides = Array.isArray(parsed?.slides) ? parsed.slides : [];
     if (!slides.length) throw new Error("요약 결과가 비어 있습니다.");
     els.pptStatus.textContent = "";
-    renderPptSlides(slides);
+    const imageSlots = renderPptSlides(slides);
+
+    // Best-effort, per slide, in parallel -- searchTopImage never throws and resolves to null
+    // when the Google Search keys aren't set, so a missing/failed image never blocks the text.
+    slides.forEach((slide, i) => {
+      searchTopImage(`${slide.title} radiology`).then((url) => {
+        if (url) attachSlideImage(imageSlots[i], url);
+      });
+    });
   } catch (e) {
     els.pptStatus.textContent = e.message || String(e);
     els.pptStatus.style.color = "var(--danger)";
@@ -548,6 +574,8 @@ function openSettingsModal() {
   els.openaiKeyInput.value = s.openaiApiKey || "";
   els.geminiKeyInput.value = s.geminiApiKey || "";
   els.anthropicKeyInput.value = s.anthropicApiKey || "";
+  els.googleSearchKeyInput.value = s.googleSearchApiKey || "";
+  els.googleSearchCxInput.value = s.googleSearchEngineId || "";
   els.settingsStatus.textContent = "";
   els.settingsModal.classList.remove("hidden");
 }
@@ -565,6 +593,8 @@ els.saveSettingsBtn.addEventListener("click", () => {
     openaiApiKey: els.openaiKeyInput.value.trim(),
     geminiApiKey: els.geminiKeyInput.value.trim(),
     anthropicApiKey: els.anthropicKeyInput.value.trim(),
+    googleSearchApiKey: els.googleSearchKeyInput.value.trim(),
+    googleSearchEngineId: els.googleSearchCxInput.value.trim(),
   });
   els.settingsStatus.textContent = "저장됨";
   els.settingsStatus.style.color = "var(--muted)";

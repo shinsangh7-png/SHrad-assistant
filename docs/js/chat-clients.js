@@ -145,3 +145,28 @@ async function callGemini({ system, messages, model }) {
 export const CHAT_CLIENTS = { claude: callClaude, gpt: callGpt, gemini: callGemini };
 
 export const PROVIDER_LABELS = { claude: "Claude", gpt: "GPT", gemini: "Gemini" };
+
+// Best-effort image lookup for the PPT export -- returns null (never throws) when the Google
+// Custom Search keys aren't configured or the request fails, since a missing image should never
+// block the text summary that's the actual point of that feature.
+export async function searchTopImage(query) {
+  const { googleSearchApiKey, googleSearchEngineId } = storage.getSettings();
+  if (!googleSearchApiKey || !googleSearchEngineId) return null;
+
+  try {
+    const params = new URLSearchParams({
+      key: googleSearchApiKey,
+      cx: googleSearchEngineId,
+      q: query,
+      searchType: "image",
+      num: "1",
+      safe: "active",
+    });
+    const res = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.items?.[0]?.link || null;
+  } catch {
+    return null;
+  }
+}
