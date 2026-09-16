@@ -10,7 +10,7 @@ const KEYS = {
 
 const DEFAULT_CONSULT_MODELS = {
   gpt: "gpt-5.1",
-  gemini: "gemini-3-pro-latest",
+  gemini: "gemini-2.5-pro",
   claude: "claude-sonnet-5",
 };
 
