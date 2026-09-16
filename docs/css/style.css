@@ -21,6 +21,7 @@
   --font-serif: "Frank Ruhl Libre", Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
 }
 
+/* 연한 회색 */
 body.theme-gray {
   --accent: #b0b0b8;
   --accent-hover: #9a9aa4;
@@ -29,6 +30,16 @@ body.theme-gray {
   --accent-strong: #5b5b66;
 }
 
+/* 진한 회색 */
+body.theme-graydark {
+  --accent: #6b6b74;
+  --accent-hover: #57575f;
+  --accent-soft: #e4e4e7;
+  --accent-pale: #f2f2f4;
+  --accent-strong: #333338;
+}
+
+/* 파란색 */
 body.theme-blue {
   --accent: #a9c9e0;
   --accent-hover: #93b8d4;
@@ -37,12 +48,13 @@ body.theme-blue {
   --accent-strong: #4a7a9e;
 }
 
+/* 코랄 -- Claude 브랜드 색상(클레이 톤 오렌지) 기준 */
 body.theme-coral {
-  --accent: #f3a58f;
-  --accent-hover: #ec8c72;
-  --accent-soft: #fce8e1;
-  --accent-pale: #fdf6f3;
-  --accent-strong: #d1613f;
+  --accent: #d97757;
+  --accent-hover: #c86647;
+  --accent-soft: #fbe8e0;
+  --accent-pale: #fdf4f0;
+  --accent-strong: #a85332;
 }
 
 * {

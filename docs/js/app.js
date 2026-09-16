@@ -637,7 +637,7 @@ hotkeyInput.addEventListener("keydown", (e) => {
   hotkeyInput.value = normalizeKey(e.key);
 });
 
-const THEME_CLASSES = ["theme-gray", "theme-blue", "theme-coral"];
+const THEME_CLASSES = ["theme-gray", "theme-graydark", "theme-blue", "theme-coral"];
 function applyTheme(theme) {
   document.body.classList.remove(...THEME_CLASSES);
   const cls = `theme-${theme}`;
