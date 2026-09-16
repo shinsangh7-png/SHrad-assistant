@@ -464,6 +464,13 @@ function attachSlideImage(imageSlot, url) {
   imageSlot.appendChild(img);
 }
 
+function showSlideImageError(imageSlot, message) {
+  const note = document.createElement("div");
+  note.className = "ppt-slide-image-error";
+  note.textContent = `이미지 검색 실패: ${message}`;
+  imageSlot.appendChild(note);
+}
+
 function buildTranscript(conv) {
   return conv.messages
     .map((m) => {
@@ -496,11 +503,13 @@ async function openPptModal() {
     els.pptStatus.textContent = "";
     const imageSlots = renderPptSlides(slides);
 
-    // Best-effort, per slide, in parallel -- searchTopImage never throws and resolves to null
-    // when the Google Search keys aren't set, so a missing/failed image never blocks the text.
+    // Best-effort, per slide, in parallel -- searchTopImage never throws and resolves to a null
+    // url when the Google Search keys aren't set at all, so a missing image never blocks the
+    // text in that (common, expected) case. If keys ARE set and it still failed, show why.
     slides.forEach((slide, i) => {
-      searchTopImage(`${slide.title} radiology`).then((url) => {
+      searchTopImage(`${slide.title} radiology`).then(({ url, error }) => {
         if (url) attachSlideImage(imageSlots[i], url);
+        else if (error) showSlideImageError(imageSlots[i], error);
       });
     });
   } catch (e) {

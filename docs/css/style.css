@@ -888,6 +888,12 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.ppt-slide-image-error {
+  font-size: 11px;
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
 @media (max-width: 680px) {
   .consult-sidebar {
     display: none;
