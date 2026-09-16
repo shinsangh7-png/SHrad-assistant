@@ -167,8 +167,6 @@ export const storage = {
       anthropicApiKey: "",
       geminiApiKey: "",
       groqApiKey: "",
-      googleSearchApiKey: "",
-      googleSearchEngineId: "",
       customTerms: "",
       hotkey: "F6",
       sttModel: "gpt-4o-transcribe",

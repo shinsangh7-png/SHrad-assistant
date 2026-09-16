@@ -313,38 +313,3 @@ async function generateSlidesGemini({ system, text, model }) {
 }
 
 export const SLIDES_CLIENTS = { claude: generateSlidesClaude, gpt: generateSlidesGpt, gemini: generateSlidesGemini };
-
-// Best-effort image lookup for the PPT export -- returns null (never throws) when the Google
-// Custom Search keys aren't configured or the request fails, since a missing image should never
-// block the text summary that's the actual point of that feature.
-// Returns { url, error }. `error` stays null when no Google Search keys are configured at all
-// (that's an expected, silent no-op -- most users won't have set this up) but is filled in with
-// the actual reason whenever keys ARE set and the search still didn't produce an image, since
-// silently swallowing every failure there just left "why is nothing showing up" unanswerable.
-// The two most common real-world causes: the API key's project doesn't have the "Custom Search
-// API" enabled (a separate toggle from the Generative Language API a Gemini key normally has),
-// or the Programmable Search Engine (cx) has image search / "search the entire web" turned off.
-export async function searchTopImage(query) {
-  const { googleSearchApiKey, googleSearchEngineId } = storage.getSettings();
-  if (!googleSearchApiKey || !googleSearchEngineId) return { url: null, error: null };
-
-  try {
-    const params = new URLSearchParams({
-      key: googleSearchApiKey,
-      cx: googleSearchEngineId,
-      q: query,
-      searchType: "image",
-      num: "1",
-      safe: "active",
-    });
-    const res = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return { url: null, error: data?.error?.message || `Google 검색 오류 (HTTP ${res.status})` };
-    }
-    const url = data.items?.[0]?.link || null;
-    return { url, error: url ? null : "검색 결과 없음" };
-  } catch (e) {
-    return { url: null, error: e.message || String(e) };
-  }
-}
