@@ -63,6 +63,7 @@ const els = {
   settingsStatus: document.getElementById("consult-settings-modal-status"),
   closeSettingsModal: document.getElementById("close-consult-settings-modal"),
   saveSettingsBtn: document.getElementById("save-consult-settings-btn"),
+  themeSelect: document.getElementById("consult-theme-select"),
   openaiKeyInput: document.getElementById("consult-openai-key-input"),
   geminiKeyInput: document.getElementById("consult-gemini-key-input"),
   anthropicKeyInput: document.getElementById("consult-anthropic-key-input"),
@@ -537,11 +538,20 @@ els.pptModal.addEventListener("click", (e) => {
   if (e.target.id === "ppt-modal") els.pptModal.classList.add("hidden");
 });
 
-// --- API key settings (shared localStorage settings object with the main SH Rad app -- this
-// page only edits the 3 fields it needs, merging so it never wipes out the transcribe app's
-// own fields like hotkey/theme/customTerms). ---
+// --- Settings: theme + API keys. This uses the same settings object shape as the SH Rad
+// transcribe app (storage.getSettings()/saveSettings()), but Rad AI now lives on its own origin
+// (Netlify, separate from SH Rad's GitHub Pages one), so the underlying localStorage is NOT
+// actually shared -- each app keeps its own copy, edited only through its own settings modal. ---
+const THEME_CLASSES = ["theme-gray", "theme-graydark", "theme-blue", "theme-coral"];
+function applyTheme(theme) {
+  document.body.classList.remove(...THEME_CLASSES);
+  const cls = `theme-${theme}`;
+  if (THEME_CLASSES.includes(cls)) document.body.classList.add(cls);
+}
+
 function openSettingsModal() {
   const s = storage.getSettings();
+  els.themeSelect.value = s.theme || "pink";
   els.openaiKeyInput.value = s.openaiApiKey || "";
   els.geminiKeyInput.value = s.geminiApiKey || "";
   els.anthropicKeyInput.value = s.anthropicApiKey || "";
@@ -556,9 +566,11 @@ els.closeSettingsModal.addEventListener("click", closeSettingsModal);
 els.settingsModal.addEventListener("click", (e) => {
   if (e.target.id === "consult-settings-modal") closeSettingsModal();
 });
+els.themeSelect.addEventListener("change", () => applyTheme(els.themeSelect.value));
 els.saveSettingsBtn.addEventListener("click", () => {
   storage.saveSettings({
     ...storage.getSettings(),
+    theme: els.themeSelect.value,
     openaiApiKey: els.openaiKeyInput.value.trim(),
     geminiApiKey: els.geminiKeyInput.value.trim(),
     anthropicApiKey: els.anthropicKeyInput.value.trim(),
@@ -572,5 +584,6 @@ switchProvider(activeProvider);
 
 {
   const s = storage.getSettings();
+  applyTheme(s.theme || "pink");
   if (!s.openaiApiKey && !s.geminiApiKey && !s.anthropicApiKey) openSettingsModal();
 }

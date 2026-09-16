@@ -626,7 +626,7 @@ button:disabled {
   gap: 4px;
 }
 
-.check-tab, .consult-tab {
+.check-tab {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -638,9 +638,25 @@ button:disabled {
   margin-bottom: -1px;
 }
 
-.check-tab.active, .consult-tab.active {
+.check-tab.active {
   color: var(--accent-strong);
   border-bottom-color: var(--accent-strong);
+}
+
+.consult-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.consult-tab.active {
+  color: var(--accent-strong);
+  border-color: var(--accent);
 }
 
 .consult-conv-select {

@@ -53,8 +53,18 @@
   <div id="consult-settings-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-header">
-        <h2>API 키 설정</h2>
+        <h2>설정</h2>
         <button id="close-consult-settings-modal" class="modal-close" aria-label="닫기">&times;</button>
+      </div>
+      <div class="settings-field">
+        <label for="consult-theme-select">색상 테마</label>
+        <select id="consult-theme-select">
+          <option value="pink">핑크 (기본)</option>
+          <option value="gray">연한 회색</option>
+          <option value="graydark">진한 회색</option>
+          <option value="coral">코랄</option>
+          <option value="blue">파란색</option>
+        </select>
       </div>
       <div class="settings-field">
         <label for="consult-openai-key-input">OpenAI API Key</label>
@@ -68,7 +78,7 @@
         <label for="consult-anthropic-key-input">Anthropic API Key</label>
         <input type="password" id="consult-anthropic-key-input" placeholder="sk-ant-..." />
       </div>
-      <div class="settings-note">이 브라우저에만 저장되며, 각 API로만 직접 전송됩니다. SH Rad 전사 앱과 이 키를 공유합니다.</div>
+      <div class="settings-note">이 브라우저에만 저장되며, 각 API로만 직접 전송됩니다.</div>
       <button id="save-consult-settings-btn" class="primary" style="width: 100%;">저장</button>
       <div class="status-msg" id="consult-settings-modal-status"></div>
     </div>
