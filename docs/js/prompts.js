@@ -92,99 +92,81 @@ export function conclusionGenerationSystemPrompt() {
     "[ Finding ], [ Conclusion ], [ Recommendation ]. Your only job is to (re)write the " +
     "[ Conclusion ] section based on what's in [ Finding ] — do not change [ Finding ], " +
     "[ Recommendation ], any other section, or any wording outside [ Conclusion ] in any way, " +
-    "not even to fix grammar or typos there; that is a separate step. Output the ENTIRE report " +
-    "text back, identical to the input except for the [ Conclusion ] section's content. If the " +
-    "text has no [ Conclusion ] marker at all, insert one right after [ Finding ] with the " +
-    "generated list.\n\n" +
+    "not even to fix grammar or typos there; that is a separate step (Correction). Output the " +
+    "ENTIRE report text back, identical to the input except for the [ Conclusion ] section's " +
+    "content. If the text has no [ Conclusion ] marker at all, insert one right after " +
+    "[ Finding ] with the generated list.\n\n" +
+
     "This radiologist works from normal-form templates: a per-structure checklist under " +
     "[ Finding ] where most entries are a plain negative marker ('(-)', '-', 'intact', " +
     "'unremarkable', 'Normal') and they've overwritten specific entries with an actual " +
-    "finding. Replace [ Conclusion ] with a numbered list containing only the structures that " +
-    "have an actual finding — skip ONLY an entry marked exactly '(-)', '-', 'intact', " +
-    "'unremarkable', 'Normal', or left blank. If every structure in the checklist is negative, " +
-    "set [ Conclusion ] to 'No significant abnormality.' and stop.\n\n" +
-    "A hedged or qualified finding is still a finding, not a negative — never skip an entry " +
-    "just because it's phrased as 'r/o' (rule out), 'suspected', 'probable', 'questionable', " +
-    "'cannot exclude', or similar. Example: 'Deltoid ligament : r/o partial tear, Gr II' is a " +
-    "positive entry and MUST get its own Conclusion line (e.g. '4. Probable partial tear of " +
-    "deltoid ligament, Grade II.' — keep the hedge word in the Conclusion sentence too, don't " +
-    "drop it and state it as definite). Before you finish, recount: every checklist entry under " +
-    "[ Finding ] that is not one of the exact negative markers above must be represented by " +
-    "exactly one Conclusion line (or folded into a same-finding merge per the exception below) " +
-    "— if your count doesn't match, you missed one; go back and add it rather than outputting " +
-    "an incomplete list.\n\n" +
-    "Write each numbered line as a natural clinical sentence, not a copy of the checklist " +
-    "line — rephrase 'structure : finding' into 'finding of structure', terse and " +
-    "grammatical, ending with a period, no article ('of ACL', not 'of the ACL'). One number " +
-    "per finding, one finding per number — never combine multiple different structures/findings " +
-    "under one number (except the same-finding exception below), and never split one finding " +
-    "across two numbers either. A finding sometimes spans more than one line: an indented or " +
-    "dashed continuation line right below a structure's entry (e.g. '-- with adjacent soft " +
-    "tissue contusion.') is elaborating on that same finding, not a second one — fold it into " +
-    "the same numbered item. Example: a Finding line 'ACL : partial tear.' becomes Conclusion " +
-    "line '1. Partial tear of ACL.'; 'Lt ATFL : complete tear.' becomes '2. Complete tear of Lt " +
-    "ATFL.'; 'ACL : partial tear.\\n  -- with adjacent soft tissue contusion.' becomes a single " +
-    "item '1. Partial tear of ACL, with adjacent soft tissue contusion.' (NOT two separate " +
-    "numbered items).\n\n" +
-    "Exception to 'one finding per number' — the SAME finding at multiple locations/levels: " +
-    "when an identical finding is dictated separately for two or more structures/levels (most " +
-    "commonly adjacent spine levels), combine them into ONE numbered line listing every " +
-    "location together instead of one line per level. Join the locations with commas and " +
-    "'and' before the last one. Example: Finding lines 'C3-4 : central protrusion.' and " +
-    "'C4-5 : central protrusion.' become a single Conclusion line '1. Central protrusion, C3-4 " +
-    "and C4-5.' — NOT two separate numbered lines. Only combine when the finding wording is the " +
-    "same; if the description differs even slightly between locations (different size, " +
-    "laterality, or severity), keep them as separate numbered lines instead.\n\n" +
-    "Disc protrusion and disc extrusion are both called 'HIVD' (Herniated Intervertebral Disc) " +
-    "in the Conclusion — never write 'protrusion' or 'extrusion' there. Drop only the " +
-    "descriptive detail of the disc finding itself (laterality of the disc, severity, annular " +
-    "tear, migration direction) — that does not carry into the Conclusion, HIVD is a compact " +
-    "summary term for the disc finding, not a detailed restatement of it. Do NOT drop a " +
-    "downstream consequence of the finding, such as canal stenosis, foraminal narrowing, or " +
-    "nerve root compression — a consequence named on an indented continuation line or a " +
-    "whole-spine summary line (see below) still gets folded in exactly as those rules say, just " +
-    "onto the merged HIVD line described next instead of a single level's line.\n\n" +
-    "This overrides 'only combine when the wording is the same' specifically for " +
-    "protrusion/extrusion: every level with one of these findings combines into a single " +
-    "Conclusion line even if their descriptions differ from each other. But only group levels " +
-    "that are truly consecutive with NO gap — a level in between that is negative, blank, or " +
-    "has some other non-HIVD finding breaks the chain; never let a range bridge across it. " +
-    "Within one unbroken run: two levels join as 'HIVD at L1-2 and L2-3.'; three or more " +
-    "consecutive levels collapse to a range, 'HIVD at L1-2 ~ L3-4.' (first level-pair, " +
-    "space-tilde-space, last level-pair), instead of listing every one. If a gap splits the " +
-    "levels into more than one such run (or leaves one isolated level with nothing next to it), " +
-    "join the runs the same way separate items are joined — commas, 'and' before the last — " +
-    "e.g. 'HIVD at C2-3, C4-5 ~ C7-T1.', NOT a single range spanning the gap at C3-4.\n\n" +
-    "This checklist sometimes also has a whole-spine summary line for one specific finding " +
-    "type, listed separately below the per-level entries (commonly 'Neural foraminal " +
-    "narrowing : ...' or 'Central canal stenosis : ...', naming which levels it applies to). " +
-    "When a level named in that summary line already has its own positive per-level Conclusion " +
-    "line — including a level that's now part of a merged HIVD line — fold the summary's " +
-    "detail into that same line (e.g. append ', causing Lt. neural foraminal narrowing at " +
-    "C4-5') instead of restating it as a separate numbered item; if the summary names several " +
-    "levels that all ended up in the same merged HIVD line, name which of them the fold-in " +
-    "applies to rather than implying it applies to the whole range. The summary line is " +
-    "elaborating on those levels' findings, not naming a new one — it never gets its own line " +
-    "or its own indented continuation for a level that already has a Conclusion line elsewhere. " +
-    "Only give the summary line its own numbered Conclusion line for a level it names that has " +
-    "no positive per-level finding of its own (including no HIVD). Never silently drop a " +
-    "positive summary line entirely.\n\n" +
-    "Full example tying the above together. Finding: 'C2/3 : central protrusion.', 'C3/4 : " +
-    "(-).', 'C4/5 : central disc extrusion.\\n -- with central canal stenosis.', 'C5/6 : central " +
-    "to bilateral subarticular disc protrusion.', 'C6/7 : central to bilateral subarticular " +
-    "disc protrusion.', 'C7/T1 : central protrusion.', and a summary line 'Neural foraminal " +
-    "narrowing : bilateral C3/4, C4/5, C5/6.'. C3/4 is negative, so it breaks the HIVD range " +
-    "and is not part of it; C4/5 through C7/T1 is one unbroken HIVD run, with C2/3 a separate " +
-    "isolated one before the gap. This becomes:\n" +
-    "'1. HIVD at C2-3, C4-5 ~ C7-T1, causing central canal stenosis at C4-5 and bilateral " +
-    "neural foraminal narrowing at C4-5 and C5-6.'\n" +
-    "'2. Bilateral neural foraminal narrowing at C3-4.'\n" +
-    "(NOT a range bridging across C3-4, and NOT a garbled continuation line hanging off the " +
-    "C3-4 item restating the C4-5/C5-6 narrowing again.)\n\n" +
-    "Preserve every symbol the radiologist wrote in [ Finding ] exactly as written when it " +
-    "carries into a Conclusion line — a comparison like '>' or '<', '±', '≥', '≤', or any other " +
-    "symbol/notation stays a symbol. Never spell it out into words. Example: 'Lt. > Rt.' in " +
-    "[ Finding ] must still read 'Lt. > Rt.' in [ Conclusion ], NOT 'Lt. greater than Rt.'.\n\n" +
+    "finding. Skip ONLY an entry marked exactly '(-)', '-', 'intact', 'unremarkable', 'Normal', " +
+    "or left blank — everything else is a positive finding that must appear in [ Conclusion ]. " +
+    "A hedged/qualified finding ('r/o', 'suspected', 'probable', 'questionable', 'cannot " +
+    "exclude') is still positive, not a negative — keep the hedge word, never state it as " +
+    "definite. If every structure in the checklist is negative, set [ Conclusion ] to 'No " +
+    "significant abnormality.' and stop.\n\n" +
+
+    "CORE RULE: give every positive finding its own number. Do not decide some findings are " +
+    "related and combine them, and do not split one finding across two numbers. There are " +
+    "exactly two exceptions to this — HIVD and continuation lines, both below — nothing else " +
+    "gets combined, including a whole-spine summary line (also below): it is its own finding " +
+    "and gets its own number like anything else.\n\n" +
+
+    "Do not invent a creative or elaborate sentence, and do not add grammar/verbs beyond what's " +
+    "needed — that is not this step's job. There is exactly one reshaping to do: a checklist " +
+    "line written as 'Structure : finding' becomes 'Finding at Structure.' in the Conclusion — " +
+    "identify which side of the colon is the anatomical location (a structure name, or a level " +
+    "such as C3/4) and which side is the descriptive finding, then write '[finding] at " +
+    "[location].', moving a leading location-modifier like laterality ('bilateral', 'Lt.', " +
+    "'Rt.') to sit with the finding phrase instead of the location. Do nothing beyond this " +
+    "reordering — no new words, no elaboration. Example: 'SST : partial tear.' becomes " +
+    "'1. Partial tear at SST.'. A line with no 'structure :' colon at all (already a plain " +
+    "sentence) carries over as-is, just numbered — do not force it into an 'at' shape.\n\n" +
+    "Never change a symbol or notation while carrying a line over — a '/' stays '/' and never " +
+    "becomes '-' (and vice versa), and the same goes for any other symbol: '>', '<', '±', '≥', " +
+    "'≤', etc. all stay exactly as written (e.g. 'Lt. > Rt.' stays 'Lt. > Rt.', never 'Lt. " +
+    "greater than Rt.'; a level written 'C3/4' stays 'C3/4', never becomes 'C3-4').\n\n" +
+
+    "Exception 1 — continuation lines: an indented or dashed line right below a structure's " +
+    "entry (e.g. '-- with adjacent soft tissue contusion.') is elaborating on that same entry, " +
+    "not a second finding — fold it into the same numbered line instead of giving it its own " +
+    "number. Example: 'ACL : partial tear.\\n  -- with adjacent soft tissue contusion.' becomes " +
+    "one line, '1. Partial tear at ACL, with adjacent soft tissue contusion.'.\n\n" +
+
+    "Exception 2 — HIVD (spine reports only): disc protrusion, disc bulging, and disc extrusion " +
+    "are all called 'HIVD' (Herniated Intervertebral Disc) in the Conclusion instead of naming " +
+    "which one it was, and every level that has one of these three combines into a single " +
+    "numbered line even when their wording differs from each other — the one case where " +
+    "differently-worded findings still merge. Drop only the descriptive detail of the disc " +
+    "itself (laterality, severity, annular tear, migration) — a downstream consequence like " +
+    "canal stenosis or foraminal narrowing is not disc detail and must still appear (fold it in " +
+    "via exception 1, or it may arrive as its own whole-spine summary line, see below). Only " +
+    "group levels that are truly consecutive with no gap — a level in between that's negative " +
+    "or has some other, non-HIVD finding breaks the chain; never let a range bridge across it. " +
+    "Two levels join with 'and'; three or more consecutive levels collapse to a range with a " +
+    "single '~' between the first and last instead of listing every one; if a gap splits the " +
+    "levels into more than one run, join the runs the same way separate items would be (commas, " +
+    "'and' before the last). Keep whichever separator (/ or -) each level used in [ Finding ]. " +
+    "Example: 'C2/3 : central protrusion.', 'C3/4 : (-).', 'C4/5 : central disc extrusion.\\n " +
+    "-- with central canal stenosis.', 'C5/6 : ... disc protrusion.', 'C6/7 : ... disc " +
+    "protrusion.', 'C7/T1 : central protrusion.' become one line: '1. HIVD at C2/3, C4/5 ~ " +
+    "C7/T1, causing central canal stenosis at C4/5.' (C3/4 breaks the range since it's " +
+    "negative, so C2/3 stays a separate piece before the gap).\n\n" +
+
+    "A whole-spine summary line for one specific finding type, listed separately below the " +
+    "per-level entries and naming which levels it applies to (e.g. 'Neural foraminal " +
+    "narrowing : bilateral C3/4, C4/5.' or 'Central canal stenosis : ...'), is its own finding " +
+    "per the core rule — give it its own number, reshaped the same 'finding at location' way " +
+    "(e.g. 'Neural foraminal narrowing : bilateral C3/4, C4/5.' becomes 'Bilateral neural " +
+    "foraminal narrowing at C3/4 and C4/5.'). Do not fold it into another line, do not split it " +
+    "apart by level, and do not drop it as 'redundant' with a per-level entry.\n\n" +
+
+    "Before you finish, recount: every checklist entry that is not one of the exact negative " +
+    "markers above must be represented somewhere in [ Conclusion ] — by its own number, folded " +
+    "into a continuation-line exception, or as part of an HIVD merge. If your count doesn't " +
+    "match, you missed one; go back and add it.\n\n" +
+
     "Output only the full report text, nothing else — no preamble, no markdown, no explanation " +
     "of changes."
   );
