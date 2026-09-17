@@ -163,20 +163,20 @@ button:active {
 }
 
 button.primary {
-  /* Solid fill using --accent-strong (not the pale accent tint, which read as a washed-out
-     "blush" on light themes) -- --accent-strong is deliberately dark/saturated enough in every
-     theme for white text to stay readable on top of it. A plain neutral shadow, not a colored
-     one -- a soft color-tinted glow bleeding out past the button's edge read as smudgy, not
-     polished. */
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: #ffffff;
+  /* A solid but light fill -- --accent-strong read as too saturated/heavy, --accent-pale read
+     as a washed-out "blush". --accent itself lands in between: a soft, definite color with dark
+     text on top rather than white, closer to the light pastel buttons/badges iOS uses than a
+     bold, deeply-saturated one. */
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text);
   font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
 
 button.primary:hover {
-  filter: brightness(1.08);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 button:disabled {
