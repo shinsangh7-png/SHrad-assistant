@@ -623,12 +623,7 @@ button:disabled {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  /* Same whisper-of-color-in-the-corners treatment as the SH Rad body background, scaled down
-     since this sits on white (--panel) rather than the gray --bg canvas. */
-  background:
-    radial-gradient(circle at 6% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 40%),
-    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 45%),
-    var(--panel);
+  background: var(--panel);
 }
 
 .consult-header {
@@ -732,7 +727,6 @@ button:disabled {
   background: var(--accent-soft);
   border-color: var(--accent);
   font-weight: 600;
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .consult-conv-item-label {
@@ -805,7 +799,6 @@ button:disabled {
   align-self: flex-end;
   background: var(--accent-pale);
   border: 1px solid var(--accent-soft);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .consult-msg.assistant {
