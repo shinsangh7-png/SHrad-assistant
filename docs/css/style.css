@@ -163,10 +163,9 @@ button:active {
 }
 
 button.primary {
-  /* --accent-strong and even plain --accent both still read as too saturated. --accent-soft is
-     a light, barely-there tint -- a thin --accent border is what gives the button its shape and
-     "this is the important one" signal, not the fill. */
-  background: var(--accent-soft);
+  /* Pushed as light as this palette goes: --accent-pale is nearly white with just a hint of
+     color, so the border alone carries the "this is the important one" signal. */
+  background: var(--accent-pale);
   border-color: var(--accent);
   color: var(--text);
   font-weight: 600;
