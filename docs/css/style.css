@@ -68,7 +68,13 @@ html, body {
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg);
+  /* A very faint accent-colored wash in the corners, iOS-wallpaper style, instead of a flat
+     solid gray -- subtle enough to stay out of the way of the white cards on top of it. */
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 45%),
+    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   font-size: 13px;
@@ -86,7 +92,7 @@ body {
   width: 26px;
   height: 26px;
   padding: 0;
-  border: 1px solid var(--border-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border-soft));
   border-radius: 50%;
   background: var(--panel);
   color: var(--muted);
@@ -98,7 +104,9 @@ body {
 }
 
 .icon-btn:hover {
-  background: var(--bg);
+  background: var(--accent-pale);
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .tab-panel {
@@ -116,7 +124,7 @@ body {
 select, textarea, input[type="text"], input[type="password"] {
   font-family: inherit;
   font-size: 13px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--accent) 10%, var(--border));
   border-radius: var(--radius-sm);
   padding: 7px 9px;
   background: var(--panel);
@@ -134,17 +142,20 @@ button {
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid var(--border);
+  /* A faint accent tint on the border rather than flat neutral gray -- the kind of small color
+     touch that keeps a mostly-white UI from reading as flat. */
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border));
   border-radius: var(--radius-sm);
   padding: 6px 12px;
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 button:hover {
-  background: var(--bg);
+  background: var(--accent-pale);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
 }
 
 button:active {
@@ -156,10 +167,13 @@ button.primary {
   border-color: var(--accent);
   color: var(--text);
   font-weight: 600;
+  /* A soft colored glow under the primary action, iOS-style, instead of sitting perfectly flat. */
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 button.primary:hover {
   background: var(--accent-soft);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 button:disabled {
@@ -177,7 +191,7 @@ button:disabled {
   justify-content: center;
   padding: 0;
   position: relative;
-  border: 1px solid var(--border-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border-soft));
   box-shadow: var(--shadow-sm);
 }
 
