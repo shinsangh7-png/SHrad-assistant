@@ -163,11 +163,10 @@ button:active {
 }
 
 button.primary {
-  /* A solid but light fill -- --accent-strong read as too saturated/heavy, --accent-pale read
-     as a washed-out "blush". --accent itself lands in between: a soft, definite color with dark
-     text on top rather than white, closer to the light pastel buttons/badges iOS uses than a
-     bold, deeply-saturated one. */
-  background: var(--accent);
+  /* --accent-strong and even plain --accent both still read as too saturated. --accent-soft is
+     a light, barely-there tint -- a thin --accent border is what gives the button its shape and
+     "this is the important one" signal, not the fill. */
+  background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--text);
   font-weight: 600;
@@ -175,7 +174,6 @@ button.primary {
 }
 
 button.primary:hover {
-  background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
 
