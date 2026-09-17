@@ -165,17 +165,18 @@ button:active {
 button.primary {
   /* Solid fill using --accent-strong (not the pale accent tint, which read as a washed-out
      "blush" on light themes) -- --accent-strong is deliberately dark/saturated enough in every
-     theme for white text to stay readable on top of it. */
+     theme for white text to stay readable on top of it. A plain neutral shadow, not a colored
+     one -- a soft color-tinted glow bleeding out past the button's edge read as smudgy, not
+     polished. */
   background: var(--accent-strong);
   border-color: var(--accent-strong);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-strong) 30%, transparent);
+  box-shadow: var(--shadow-sm);
 }
 
 button.primary:hover {
   filter: brightness(1.08);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--accent-strong) 40%, transparent);
 }
 
 button:disabled {
