@@ -71,8 +71,8 @@ body {
   /* A very faint accent-colored wash in the corners, iOS-wallpaper style, instead of a flat
      solid gray -- subtle enough to stay out of the way of the white cards on top of it. */
   background:
-    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 45%),
-    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 50%),
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 45%),
+    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 50%),
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
