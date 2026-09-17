@@ -135,6 +135,21 @@ export function conclusionGenerationSystemPrompt() {
     "and C4-5.' — NOT two separate numbered lines. Only combine when the finding wording is the " +
     "same; if the description differs even slightly between locations (different size, " +
     "laterality, or severity), keep them as separate numbered lines instead.\n\n" +
+    "Disc protrusion and disc extrusion are both called 'HIVD' (Herniated Intervertebral Disc) " +
+    "in the Conclusion — never write 'protrusion' or 'extrusion' there, and drop whatever " +
+    "qualifying detail came with it in [ Finding ] (laterality, severity, annular tear, " +
+    "migration, etc.); HIVD is a compact summary term, not a detailed restatement. This " +
+    "overrides the 'only combine when the wording is the same' rule above specifically for " +
+    "protrusion/extrusion: combine every level that has one into a single Conclusion line even " +
+    "if their descriptions differ from each other. For two levels, join them like the exception " +
+    "above ('HIVD at L1-2 and L2-3.'). For three or more CONSECUTIVE levels, use a range instead " +
+    "of listing each one: 'HIVD at L1-2 ~ L3-4.' (first level-pair, space-tilde-space, last " +
+    "level-pair), NOT 'HIVD at L1-2, L2-3 and L3-4.'. A single isolated protrusion/extrusion " +
+    "finding with no other level to combine with still gets its own line, 'HIVD at L4-5.', " +
+    "rather than spelling out the finding. Example: Finding lines 'L1/2 : central protrusion.', " +
+    "'L2/3 : disc extrusion with minimal inferior migration, annular tear.', and 'L3/4 : central " +
+    "protrusion.' all become one Conclusion line '1. HIVD at L1-2 ~ L3-4.' — the annular tear " +
+    "and migration detail from L2/3 does not carry into this line.\n\n" +
     "This checklist sometimes also has a whole-spine summary line for one specific finding " +
     "type, listed separately below the per-level entries (commonly 'Neural foraminal " +
     "narrowing : ...' or 'Central canal stenosis : ...', naming which levels it applies to). " +
