@@ -163,17 +163,19 @@ button:active {
 }
 
 button.primary {
-  background: var(--accent-pale);
-  border-color: var(--accent);
-  color: var(--text);
+  /* Solid fill using --accent-strong (not the pale accent tint, which read as a washed-out
+     "blush" on light themes) -- --accent-strong is deliberately dark/saturated enough in every
+     theme for white text to stay readable on top of it. */
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #ffffff;
   font-weight: 600;
-  /* A soft colored glow under the primary action, iOS-style, instead of sitting perfectly flat. */
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-strong) 30%, transparent);
 }
 
 button.primary:hover {
-  background: var(--accent-soft);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  filter: brightness(1.08);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--accent-strong) 40%, transparent);
 }
 
 button:disabled {
