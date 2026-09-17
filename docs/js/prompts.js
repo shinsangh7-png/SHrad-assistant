@@ -115,14 +115,18 @@ export function conclusionGenerationSystemPrompt() {
 
     "Do not invent a creative or elaborate sentence, and do not add grammar/verbs beyond what's " +
     "needed — that is not this step's job. There is exactly one reshaping to do: a checklist " +
-    "line written as 'Structure : finding' becomes 'Finding at Structure.' in the Conclusion — " +
-    "identify which side of the colon is the anatomical location (a structure name, or a level " +
-    "such as C3/4) and which side is the descriptive finding, then write '[finding] at " +
-    "[location].', moving a leading location-modifier like laterality ('bilateral', 'Lt.', " +
-    "'Rt.') to sit with the finding phrase instead of the location. Do nothing beyond this " +
-    "reordering — no new words, no elaboration. Example: 'SST : partial tear.' becomes " +
-    "'1. Partial tear at SST.'. A line with no 'structure :' colon at all (already a plain " +
-    "sentence) carries over as-is, just numbered — do not force it into an 'at' shape.\n\n" +
+    "line written as 'Structure : finding' loses the colon and becomes a short phrase, " +
+    "'Finding <preposition> Structure.', in the Conclusion — identify which side of the colon " +
+    "is the anatomical location (a structure name, or a level such as C3/4) and which side is " +
+    "the descriptive finding, then join them with whichever preposition reads naturally for " +
+    "that pairing ('at' is common for a level or region, e.g. 'C3/4 : central protrusion.' -> " +
+    "'Central protrusion at C3/4.'; use your judgment for what fits elsewhere rather than " +
+    "defaulting to one word regardless of fit). Move a leading location-modifier like " +
+    "laterality ('bilateral', 'Lt.', 'Rt.') to sit with the finding phrase instead of the " +
+    "location. Do nothing beyond this reordering — no new words, no elaboration. Example: " +
+    "'SST : partial tear.' becomes '1. Partial tear at SST.'. A line with no 'structure :' " +
+    "colon at all (already a plain sentence) carries over as-is, just numbered — do not force " +
+    "a preposition onto it.\n\n" +
     "Never change a symbol or notation while carrying a line over — a '/' stays '/' and never " +
     "becomes '-' (and vice versa), and the same goes for any other symbol: '>', '<', '±', '≥', " +
     "'≤', etc. all stay exactly as written (e.g. 'Lt. > Rt.' stays 'Lt. > Rt.', never 'Lt. " +
