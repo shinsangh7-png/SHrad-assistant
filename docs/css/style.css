@@ -631,6 +631,12 @@ button:disabled {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
+  /* Same soft wallpaper-style wash as SH Rad's page background, scaled to a short wide bar --
+     anchored at the two ends rather than diagonal corners. */
+  background:
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--accent) 25%, transparent), transparent 60%),
+    radial-gradient(circle at 100% 50%, color-mix(in srgb, var(--accent-hover) 20%, transparent), transparent 65%),
+    var(--panel);
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border-soft));
   flex: 0 0 auto;
 }
@@ -877,6 +883,12 @@ button:disabled {
   gap: 6px;
   align-items: flex-end;
   flex: 0 0 auto;
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-hover) 18%, transparent), transparent 65%),
+    var(--panel);
 }
 
 .consult-input-row textarea {
