@@ -27,9 +27,9 @@ const MODEL_OPTIONS = {
     { value: "gpt-4o", label: "gpt-4o" },
   ],
   gemini: [
-    { value: "gemini-2.5-pro", label: "gemini-2.5-pro (기본)" },
+    { value: "gemini-3.1-pro-preview", label: "gemini-3.1-pro-preview (기본)" },
     { value: "gemini-2.5-flash", label: "gemini-2.5-flash (경량)" },
-    { value: "gemini-3-pro-latest", label: "gemini-3-pro-latest (최신, 계정에 있을 시)" },
+    { value: "gemini-3-pro-latest", label: "gemini-3-pro-latest" },
   ],
   claude: [
     { value: "claude-sonnet-5", label: "claude-sonnet-5 (기본)" },

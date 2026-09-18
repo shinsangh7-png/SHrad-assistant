@@ -635,8 +635,8 @@ button:disabled {
      anchored at the two ends rather than diagonal corners. Lighter than SH Rad's own wash since
      this bar is much bigger on screen, so the same intensity reads as heavier here. */
   background:
-    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
-    radial-gradient(circle at 100% 50%, color-mix(in srgb, var(--accent-hover) 8%, transparent), transparent 65%),
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 45%),
+    radial-gradient(circle at 100% 50%, color-mix(in srgb, var(--accent-hover) 11%, transparent), transparent 50%),
     var(--panel);
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border-soft));
   flex: 0 0 auto;
