@@ -361,6 +361,79 @@ button:disabled {
   margin: 8px 0;
 }
 
+/* Template part buttons, arranged in rows the user can drag them between. */
+.template-board {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+}
+
+.template-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-sm);
+}
+
+.template-row.drop-row {
+  background: var(--accent-pale);
+  border-color: var(--accent);
+}
+
+/* Thin strip between rows -- just spacing normally, opens up as a "new row here" target while a
+   button is being dragged. */
+.template-gap {
+  height: 4px;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  transition: height 0.12s ease, background 0.12s ease;
+}
+
+.template-board.is-dragging .template-gap {
+  height: 16px;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.template-gap.gap-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.template-chip {
+  position: relative;
+  cursor: grab;
+}
+
+.template-chip:active {
+  cursor: grabbing;
+}
+
+.template-chip.dragging {
+  opacity: 0.35;
+}
+
+/* Insertion bar showing which side of a button the dragged one will land on. */
+.template-chip.drop-before::before,
+.template-chip.drop-after::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent-strong);
+}
+
+.template-chip.drop-before::before {
+  left: -5px;
+}
+
+.template-chip.drop-after::after {
+  right: -5px;
+}
+
 .context-menu {
   position: fixed;
   background: var(--panel);

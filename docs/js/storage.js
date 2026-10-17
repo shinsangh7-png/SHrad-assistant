@@ -5,6 +5,7 @@ const KEYS = {
   templates: "sh-rad.templates",
   templatesSeededDefaults: "sh-rad.templates.seededDefaults",
   templateParts: "sh-rad.templateParts",
+  templateLayout: "sh-rad.templateLayout",
   consult: "sh-rad.consult",
 };
 
@@ -164,6 +165,28 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// The part list (templateParts) is the source of truth for *which* parts exist; the layout only
+// says how they're arranged in rows. Reconciled on every read so it can never drift: names that
+// no longer exist are dropped, duplicates collapse, empty rows disappear, and any part the
+// layout doesn't place yet (a new one, or everything on first use -- which reads as the same
+// wrapped flow as before the layout existed) goes at the end of the last row.
+function reconcileRows(rows, parts) {
+  const partSet = new Set(parts);
+  const placed = new Set();
+  const out = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!Array.isArray(row)) continue;
+    const clean = row.filter((p) => partSet.has(p) && !placed.has(p) && placed.add(p));
+    if (clean.length) out.push(clean);
+  }
+  const missing = parts.filter((p) => !placed.has(p));
+  if (missing.length) {
+    if (out.length) out[out.length - 1].push(...missing);
+    else out.push(missing);
+  }
+  return out;
+}
+
 export const storage = {
   // --- Settings (API keys + custom term list) ---
   getSettings() {
@@ -229,6 +252,17 @@ export const storage = {
       if (!all[modality]) all[modality] = [...(STARTER_TEMPLATE_PARTS[modality] || [])];
       if (!all[modality].includes(part)) all[modality].push(part);
       writeJson(KEYS.templateParts, all);
+    },
+    // Rows of part names, in the order/lines the user arranged them (see reconcileRows).
+    getLayout(modality) {
+      const parts = this.getParts(modality);
+      const layouts = readJson(KEYS.templateLayout, {});
+      return reconcileRows(layouts[modality], parts);
+    },
+    saveLayout(modality, rows) {
+      const layouts = readJson(KEYS.templateLayout, {});
+      layouts[modality] = reconcileRows(rows, this.getParts(modality));
+      writeJson(KEYS.templateLayout, layouts);
     },
     removePart(modality, part) {
       const all = readJson(KEYS.templateParts, {});

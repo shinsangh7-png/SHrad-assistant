@@ -519,13 +519,32 @@ function renderTemplatePartStep(modality) {
   back.addEventListener("click", renderTemplateModalityStep);
   templateContent.appendChild(back);
 
-  const grid = document.createElement("div");
-  grid.className = "modality-grid";
-  storage.templates.getParts(modality).forEach((part) => {
+  // The part buttons live in user-arranged rows (see storage.templates.getLayout). Drag a button
+  // onto another one to drop it before/after it, onto empty space in a row to append it there, or
+  // onto a thin strip between rows (they open up while dragging) to start a new row. A plain
+  // click is unaffected -- the browser only fires "click" when no drag happened.
+  const board = document.createElement("div");
+  board.className = "template-board";
+  templateContent.appendChild(board);
+
+  let rows = storage.templates.getLayout(modality);
+  let drag = null; // { part } while one of the buttons is being dragged
+  let target = null; // where it would land right now, see moveChip()
+
+  function makeGap(at) {
+    const gap = document.createElement("div");
+    gap.className = "template-gap";
+    gap.dataset.gap = String(at);
+    return gap;
+  }
+
+  function makeChip(part) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "action-sm";
+    btn.className = "action-sm template-chip";
     btn.textContent = part;
+    btn.draggable = true;
+    btn.dataset.part = part;
     btn.addEventListener("click", () => {
       const text = storage.templates.get(modality, part);
       if (text.trim()) insertAtCursor(transcriptText, text.trim());
@@ -538,9 +557,98 @@ function renderTemplatePartStep(modality) {
       templateContextMenu.style.top = `${e.clientY}px`;
       templateContextMenu.classList.remove("hidden");
     });
-    grid.appendChild(btn);
+    btn.addEventListener("dragstart", (e) => {
+      drag = { part };
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", part);
+      // Restyling inside dragstart itself can make Chrome cancel the drag, so wait a frame.
+      requestAnimationFrame(() => {
+        btn.classList.add("dragging");
+        board.classList.add("is-dragging");
+      });
+    });
+    btn.addEventListener("dragend", () => {
+      drag = null;
+      target = null;
+      board.classList.remove("is-dragging");
+      clearDropIndicators();
+    });
+    return btn;
+  }
+
+  function renderBoard() {
+    board.innerHTML = "";
+    board.appendChild(makeGap(0));
+    rows.forEach((row, r) => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "template-row";
+      rowEl.dataset.row = String(r);
+      row.forEach((part) => rowEl.appendChild(makeChip(part)));
+      board.appendChild(rowEl);
+      board.appendChild(makeGap(r + 1));
+    });
+  }
+
+  function clearDropIndicators() {
+    board
+      .querySelectorAll(".drop-before, .drop-after, .drop-row, .gap-active")
+      .forEach((el) => el.classList.remove("drop-before", "drop-after", "drop-row", "gap-active"));
+  }
+
+  board.addEventListener("dragover", (e) => {
+    if (!drag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    clearDropIndicators();
+    target = null;
+
+    const chip = e.target.closest(".template-chip");
+    if (chip) {
+      if (chip.dataset.part === drag.part) return;
+      const rect = chip.getBoundingClientRect();
+      const after = e.clientX > rect.left + rect.width / 2;
+      chip.classList.add(after ? "drop-after" : "drop-before");
+      target = { kind: "chip", anchor: chip.dataset.part, after };
+      return;
+    }
+    const gap = e.target.closest(".template-gap");
+    if (gap) {
+      gap.classList.add("gap-active");
+      target = { kind: "new-row", at: Number(gap.dataset.gap) };
+      return;
+    }
+    const rowEl = e.target.closest(".template-row");
+    if (rowEl) {
+      rowEl.classList.add("drop-row");
+      target = { kind: "row-end", row: Number(rowEl.dataset.row) };
+    }
   });
 
+  board.addEventListener("dragleave", (e) => {
+    if (e.relatedTarget && board.contains(e.relatedTarget)) return;
+    clearDropIndicators();
+    target = null;
+  });
+
+  board.addEventListener("drop", (e) => {
+    if (!drag) return;
+    e.preventDefault();
+    const moved = moveChip(rows, drag.part, target);
+    if (moved) {
+      rows = moved;
+      storage.templates.saveLayout(modality, rows);
+    }
+    drag = null;
+    target = null;
+    board.classList.remove("is-dragging");
+    renderBoard();
+  });
+
+  renderBoard();
+
+  const addRow = document.createElement("div");
+  addRow.className = "action-row";
+  addRow.style.marginTop = "6px";
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "action-sm";
@@ -552,9 +660,39 @@ function renderTemplatePartStep(modality) {
       renderTemplateEditStep(modality, name.trim());
     }
   });
-  grid.appendChild(addBtn);
+  addRow.appendChild(addBtn);
+  templateContent.appendChild(addRow);
+}
 
-  templateContent.appendChild(grid);
+// Returns the new rows after moving `part` to `target`, or null if nothing would change.
+// `target` is one of: { kind: "chip", anchor, after } (next to another part), { kind: "row-end",
+// row } (append to that row), { kind: "new-row", at } (a new row inserted before row index `at`).
+// The part is lifted out first without compacting empty rows, so row indexes in `target` still
+// line up with what's on screen; empty rows are dropped only at the end.
+function moveChip(rows, part, target) {
+  if (!target) return null;
+  const next = rows.map((r) => r.filter((p) => p !== part));
+  if (target.kind === "chip") {
+    let placed = false;
+    for (const row of next) {
+      const i = row.indexOf(target.anchor);
+      if (i !== -1) {
+        row.splice(i + (target.after ? 1 : 0), 0, part);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) return null;
+  } else if (target.kind === "row-end") {
+    if (!next[target.row]) return null;
+    next[target.row].push(part);
+  } else if (target.kind === "new-row") {
+    next.splice(Math.min(target.at, next.length), 0, [part]);
+  } else {
+    return null;
+  }
+  const compact = next.filter((r) => r.length > 0);
+  return JSON.stringify(compact) === JSON.stringify(rows) ? null : compact;
 }
 
 function renderTemplateEditStep(modality, part) {
