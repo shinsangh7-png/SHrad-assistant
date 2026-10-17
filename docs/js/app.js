@@ -5,7 +5,7 @@ import { Dictation } from "./dictation.js";
 import { insertAtCursor, setFieldValue } from "./cursor-insert.js";
 import { copyToClipboard } from "./clipboard.js";
 import { attachLineCopyHandles } from "./line-copy.js";
-import { restoreMarkerSpacing } from "./format-guard.js";
+import { spliceConclusion } from "./report-text.js";
 
 const transcriptText = document.getElementById("transcript-text");
 const startBtn = document.getElementById("start-btn");
@@ -200,11 +200,16 @@ correctBtn.addEventListener("click", async () => {
   setMicStatus("교정 중...");
   try {
     const original = transcriptText.value;
-    let corrected = await correctGrammar(original);
-    corrected = restoreMarkerSpacing(original, corrected);
-    corrected = applyPostprocessingRules(corrected);
-    transcriptText.value = corrected;
-    setMicStatus("교정 완료.");
+    const { text: corrected, changed } = await correctGrammar(original);
+    // The model answers with line numbers into the text it was sent, so they only mean anything
+    // if the text is still exactly that -- if it was edited or dictated into during the wait,
+    // applying them could hit the wrong lines.
+    if (transcriptText.value !== original) {
+      setMicStatus("교정하는 동안 내용이 바뀌어 적용하지 않았습니다. 다시 눌러주세요.", true);
+      return;
+    }
+    setFieldValue(transcriptText, applyPostprocessingRules(corrected));
+    setMicStatus(changed ? `교정 완료 (${changed}줄 수정).` : "교정할 부분이 없습니다.");
   } catch (e) {
     setMicStatus(`교정 실패: ${e.message}`, true);
   } finally {
@@ -222,11 +227,10 @@ conclusionBtn.addEventListener("click", async () => {
   conclusionBtn.disabled = true;
   setMicStatus("Conclusion 생성 중...");
   try {
-    const original = transcriptText.value;
-    let result = await generateConclusion(original);
-    result = restoreMarkerSpacing(original, result);
-    result = applyPostprocessingRules(result);
-    transcriptText.value = result;
+    const conclusion = applyPostprocessingRules(await generateConclusion(transcriptText.value));
+    // Spliced into the text as it is *now* (the model only returned the list, so an edit made
+    // while waiting isn't lost) -- the marker and the spacing around it are kept as they were.
+    setFieldValue(transcriptText, spliceConclusion(transcriptText.value, conclusion));
     setMicStatus("Conclusion 생성 완료.");
   } catch (e) {
     setMicStatus(`Conclusion 생성 실패: ${e.message}`, true);

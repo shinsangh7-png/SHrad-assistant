@@ -35,18 +35,12 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "- Preserve standard radiology abbreviations exactly as written: 'S/P' (status post), " +
     "'C.I.' (clinical information), 'R/O' (rule out), 'Rt.'/'Lt.' (right/left). Never spell " +
     "these out or expand them.\n\n" +
-    "Preserve the input's line breaks and blank lines EXACTLY as given, including the spacing " +
-    "immediately around bracketed section markers like '[ Finding ]', '[ Conclusion ]', " +
-    "'[ Recommendation ]'. If a marker is immediately followed by its content with no blank " +
-    "line between them in the input, it must still be immediately followed by that content " +
-    "with no blank line in the output — do NOT insert one even if it looks tidier or more " +
-    "consistent with spacing elsewhere in the document. Example: input '[ Conclusion ]\\nNo " +
-    "significant abnormality.' must come back as '[ Conclusion ]\\nNo significant " +
-    "abnormality.', NOT '[ Conclusion ]\\n\\nNo significant abnormality.'. This text is " +
-    "arranged into a template's sections/checklist with specific spacing, and that layout must " +
-    "survive correction untouched. Never merge two lines into one, never split one line into " +
-    "several, and never add or remove a blank line anywhere, except where rule 3 below " +
-    "specifically applies.\n\n" +
+    "This text is arranged into a template's sections/checklist with specific spacing, and that " +
+    "layout must survive correction untouched: never list a blank line or a bracketed section " +
+    "marker line like '[ Finding ]', '[ Conclusion ]', '[ Recommendation ]' (they never need " +
+    "correcting), never change a line just to alter its spacing or indentation, and never " +
+    "merge two lines into one or split one line into several except where rules 3 and 7 below " +
+    "specifically call for it.\n\n" +
     "Apply these formatting rules:\n" +
     "1. Capitalize the first letter of every sentence.\n" +
     "2. Ensure every sentence ends with a period if it doesn't already.\n" +
@@ -80,22 +74,30 @@ export function grammarCorrectionSystemPrompt(customTerms = "") {
     "word the speaker abandoned mid-sentence, a stray adverb attached to nothing). Only " +
     "remove when you're confident it's noise, not a real qualifier — when unsure, leave it " +
     "in. Example: 'Numerous, uh, too many cysts in both kidneys.' -> 'Numerous cysts in " +
-    "both kidneys.'\n" +
-    "Output only the fully corrected report text, nothing else — no preamble, no markdown, " +
-    "no explanation of changes."
+    "both kidneys.'\n\n" +
+    "HOW TO ANSWER: the report arrives with a line number in front of every line, like '  7| " +
+    "text' (the part after '| ' is the line's real content; blank lines are numbered too). Do " +
+    "NOT write the report back out. Call the tool with ONLY the lines that actually need a " +
+    "change — a line that's already fine is simply left out of the list, and anything you " +
+    "don't list stays exactly as it is. For a line that needs correcting, give its line number " +
+    "and its full corrected text (without the 'N| ' prefix, and keeping its leading " +
+    "indentation). The text may contain a line break only when rule 3 splits a run-on line " +
+    "into several. To drop a line outright (rule 6 duplicates, rule 7 superseded wording), give " +
+    "its number with delete=true; for rule 7, put the merged wording on the line that stays and " +
+    "delete the other. If nothing needs changing, return an empty list."
   );
 }
 
 export function conclusionGenerationSystemPrompt() {
   return (
     "You are completing a radiology report. The report has bracketed section markers like " +
-    "[ Finding ], [ Conclusion ], [ Recommendation ]. Your only job is to (re)write the " +
-    "[ Conclusion ] section based on what's in [ Finding ] — do not change [ Finding ], " +
-    "[ Recommendation ], any other section, or any wording outside [ Conclusion ] in any way, " +
-    "not even to fix grammar or typos there; that is a separate step (Correction). Output the " +
-    "ENTIRE report text back, identical to the input except for the [ Conclusion ] section's " +
-    "content. If the text has no [ Conclusion ] marker at all, insert one right after " +
-    "[ Finding ] with the generated list.\n\n" +
+    "[ Finding ], [ Conclusion ], [ Recommendation ]. Your only job is to write the " +
+    "[ Conclusion ] list from what's in [ Finding ]; you are given just the [ Finding ] " +
+    "section. Output ONLY the Conclusion list itself — the numbered lines that go under the " +
+    "[ Conclusion ] marker — with no '[ Conclusion ]' marker, no [ Finding ] or " +
+    "[ Recommendation ] text, no preamble, no markdown. The rest of the report is handled " +
+    "outside this step and must not be reproduced; do not fix grammar or typos in the findings " +
+    "either, that is a separate step (Correction).\n\n" +
 
     "This radiologist works from normal-form templates: a per-structure checklist under " +
     "[ Finding ] where most entries are a plain negative marker ('(-)', '-', 'intact', " +
@@ -104,7 +106,7 @@ export function conclusionGenerationSystemPrompt() {
     "or left blank — everything else is a positive finding that must appear in [ Conclusion ]. " +
     "A hedged/qualified finding ('r/o', 'suspected', 'probable', 'questionable', 'cannot " +
     "exclude') is still positive, not a negative — keep the hedge word, never state it as " +
-    "definite. If every structure in the checklist is negative, set [ Conclusion ] to 'No " +
+    "definite. If every structure in the checklist is negative, output exactly 'No " +
     "significant abnormality.' and stop.\n\n" +
 
     "CORE RULE: give every positive finding its own number. Do not decide some findings are " +
@@ -171,8 +173,8 @@ export function conclusionGenerationSystemPrompt() {
     "into a continuation-line exception, or as part of an HIVD merge. If your count doesn't " +
     "match, you missed one; go back and add it.\n\n" +
 
-    "Output only the full report text, nothing else — no preamble, no markdown, no explanation " +
-    "of changes."
+    "Output only the Conclusion list, nothing else — no '[ Conclusion ]' marker, no preamble, no " +
+    "markdown, no explanation of changes."
   );
 }
 
