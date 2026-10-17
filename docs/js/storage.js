@@ -11,14 +11,21 @@ const KEYS = {
 
 const DEFAULT_CONSULT_MODELS = {
   gpt: "gpt-5.1",
-  gemini: "gemini-3.1-pro-preview",
+  // The same model SH Rad's REFER and dictation already call with this Gemini key, so it's the one
+  // id known to work here. The pro models need a billed project (free tier quota is 0) or are retired.
+  gemini: "gemini-3.6-flash",
   claude: "claude-sonnet-5",
 };
 
-// Model ids that earlier defaults shipped with and the provider has since rejected. setModel()
-// persists every provider's default alongside the changed one, so a retired default can sit in
-// someone's localStorage and keep overriding the corrected default forever -- drop these on read.
-const RETIRED_CONSULT_MODELS = new Set(["gemini-2.5-pro", "gemini-3-pro-latest"]);
+// Model ids that earlier defaults/options shipped with but don't work for this setup (retired by
+// the provider, or paid-tier only). A saved one would keep overriding the working default, so
+// getModels() drops them on read and falls back to the default.
+const DROPPED_CONSULT_MODELS = new Set([
+  "gemini-2.5-pro",
+  "gemini-3-pro-latest",
+  "gemini-2.5-flash",
+  "gemini-3.1-pro-preview",
+]);
 
 // Starter body-part list per modality, seeded once per modality (not globally) into
 // templateParts so the user can rename/add/remove from there afterward without it reverting.
@@ -303,13 +310,15 @@ export const storage = {
     getModels() {
       const saved = readJson(KEYS.consult, {}).models || {};
       const usable = Object.fromEntries(
-        Object.entries(saved).filter(([, model]) => !RETIRED_CONSULT_MODELS.has(model))
+        Object.entries(saved).filter(([, model]) => !DROPPED_CONSULT_MODELS.has(model))
       );
       return { ...DEFAULT_CONSULT_MODELS, ...usable };
     },
     setModel(provider, model) {
       const all = readJson(KEYS.consult, {});
-      all.models = { ...DEFAULT_CONSULT_MODELS, ...(all.models || {}), [provider]: model };
+      // Only the provider actually changed -- persisting the other providers' current defaults
+      // here is what froze stale ones into storage in the first place.
+      all.models = { ...(all.models || {}), [provider]: model };
       writeJson(KEYS.consult, all);
     },
     getActiveProvider() {
