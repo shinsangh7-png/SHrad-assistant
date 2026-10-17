@@ -14,6 +14,11 @@ const DEFAULT_CONSULT_MODELS = {
   claude: "claude-sonnet-5",
 };
 
+// Model ids that earlier defaults shipped with and the provider has since rejected. setModel()
+// persists every provider's default alongside the changed one, so a retired default can sit in
+// someone's localStorage and keep overriding the corrected default forever -- drop these on read.
+const RETIRED_CONSULT_MODELS = new Set(["gemini-2.5-pro", "gemini-3-pro-latest"]);
+
 // Starter body-part list per modality, seeded once per modality (not globally) into
 // templateParts so the user can rename/add/remove from there afterward without it reverting.
 const STARTER_TEMPLATE_PARTS = {
@@ -263,7 +268,10 @@ export const storage = {
   consult: {
     getModels() {
       const saved = readJson(KEYS.consult, {}).models || {};
-      return { ...DEFAULT_CONSULT_MODELS, ...saved };
+      const usable = Object.fromEntries(
+        Object.entries(saved).filter(([, model]) => !RETIRED_CONSULT_MODELS.has(model))
+      );
+      return { ...DEFAULT_CONSULT_MODELS, ...usable };
     },
     setModel(provider, model) {
       const all = readJson(KEYS.consult, {});

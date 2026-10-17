@@ -29,7 +29,6 @@ const MODEL_OPTIONS = {
   gemini: [
     { value: "gemini-3.1-pro-preview", label: "gemini-3.1-pro-preview (기본)" },
     { value: "gemini-2.5-flash", label: "gemini-2.5-flash (경량)" },
-    { value: "gemini-3-pro-latest", label: "gemini-3-pro-latest" },
   ],
   claude: [
     { value: "claude-sonnet-5", label: "claude-sonnet-5 (기본)" },
