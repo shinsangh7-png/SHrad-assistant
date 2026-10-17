@@ -194,6 +194,37 @@ function reconcileRows(rows, parts) {
   return out;
 }
 
+// --- Moving templates + rules between computers ---------------------------------------------
+// What an export file carries: the templates, the part lists, the row layout, the 변환 rules and
+// the "already seeded starter defaults" lists that go with them (those matter: without them a
+// full replace would re-seed starter text/rules the source computer had deliberately cleared).
+// Settings -- and so the API keys -- are never part of it.
+const SHARED_KEYS = [
+  "templates",
+  "templatesSeededDefaults",
+  "templateParts",
+  "templateLayout",
+  "rules",
+  "rulesSeededDefaults",
+];
+const EXPORT_APP_ID = "sh-rad";
+const EXPORT_VERSION = 1;
+
+const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const isStringArray = (v) => Array.isArray(v) && v.every((s) => typeof s === "string");
+const objectOf = (check) => (v) => isPlainObject(v) && Object.values(v).every(check);
+
+const SHARED_VALIDATORS = {
+  templates: objectOf((s) => typeof s === "string"),
+  templatesSeededDefaults: isStringArray,
+  templateParts: objectOf(isStringArray),
+  templateLayout: objectOf((rows) => Array.isArray(rows) && rows.every(isStringArray)),
+  rules: (v) =>
+    Array.isArray(v) &&
+    v.every((r) => isPlainObject(r) && typeof r.find_text === "string" && typeof r.replace_text === "string"),
+  rulesSeededDefaults: isStringArray,
+};
+
 export const storage = {
   // --- Settings (API keys + custom term list) ---
   getSettings() {
@@ -302,6 +333,53 @@ export const storage = {
       all[`${modality}::${part}`] = text;
       writeJson(KEYS.templates, all);
     },
+  },
+
+  // --- Export / import of templates + rules (see SHARED_KEYS) ---
+  exportShared() {
+    const data = {};
+    for (const name of SHARED_KEYS) {
+      const raw = localStorage.getItem(KEYS[name]);
+      if (raw !== null) data[name] = readJson(KEYS[name], null);
+    }
+    return { app: EXPORT_APP_ID, kind: "templates-and-rules", version: EXPORT_VERSION, exportedAt: new Date().toISOString(), data };
+  },
+  // Checks an already-parsed export file and returns { data, summary }, or throws an Error with a
+  // message fit to show the user. Nothing is written here -- the caller applies it only after
+  // validation (and the user's confirmation) so a bad file can't leave storage half-overwritten.
+  parseSharedExport(file) {
+    if (!isPlainObject(file) || file.app !== EXPORT_APP_ID || !isPlainObject(file.data)) {
+      throw new Error("SH Rad에서 내보낸 파일이 아닙니다.");
+    }
+    if (typeof file.version === "number" && file.version > EXPORT_VERSION) {
+      throw new Error("더 새로운 버전에서 내보낸 파일입니다. 이 앱을 최신으로 업데이트해주세요.");
+    }
+    const data = {};
+    for (const name of SHARED_KEYS) {
+      if (!(name in file.data)) continue;
+      if (!SHARED_VALIDATORS[name](file.data[name])) {
+        throw new Error(`파일 내용이 올바르지 않습니다 (${name}).`);
+      }
+      data[name] = file.data[name];
+    }
+    if (!("templates" in data) && !("templateParts" in data) && !("rules" in data)) {
+      throw new Error("파일에 템플릿이나 규칙 정보가 없습니다.");
+    }
+    if (data.rules) data.rules = data.rules.map((r) => ({ ...r, id: r.id || uid(), is_active: r.is_active !== false }));
+    const summary = {
+      templates: Object.values(data.templates || {}).filter((t) => t.trim()).length,
+      parts: Object.values(data.templateParts || {}).reduce((n, list) => n + list.length, 0),
+      rules: (data.rules || []).length,
+    };
+    return { data, summary };
+  },
+  // Full replace: every shared key is overwritten with the file's value, and a key the file
+  // doesn't have is removed here too, so this computer ends up exactly mirroring the file.
+  applySharedExport(data) {
+    for (const name of SHARED_KEYS) {
+      if (name in data) writeJson(KEYS[name], data[name]);
+      else localStorage.removeItem(KEYS[name]);
+    }
   },
 
   // --- AI 문의 (consult) tab preferences -- kept in its own key so the main

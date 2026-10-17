@@ -118,6 +118,16 @@
         <input type="text" id="hotkey-input" placeholder="F6" readonly />
         <div class="settings-note" style="margin-top: 4px;">클릭 후 원하는 키를 누르세요. F1~F12 등 기능키를 추천합니다 (일반 타이핑과 안 겹침).</div>
       </div>
+      <div class="settings-field">
+        <label>템플릿 · 변환 규칙 옮기기 (다른 컴퓨터와 공유)</label>
+        <div class="action-row">
+          <button type="button" id="export-data-btn" class="action-sm">내보내기</button>
+          <button type="button" id="import-data-btn" class="action-sm">불러오기</button>
+          <input type="file" id="import-data-input" accept=".json,application/json" hidden />
+        </div>
+        <div class="settings-note" style="margin-top: 4px;">내보내기: 템플릿, 부위 배치, 변환 규칙을 파일 하나로 저장합니다 (API 키는 들어가지 않아요). 불러오기: 파일 내용으로 이 컴퓨터의 템플릿/규칙을 통째로 덮어씁니다.</div>
+        <div class="status-msg" id="data-transfer-status"></div>
+      </div>
       <div class="settings-note">이 브라우저에만 저장되며, OpenAI/Anthropic API로만 직접 전송됩니다.</div>
       <button id="save-settings-btn" class="primary" style="width: 100%;">저장</button>
       <div class="status-msg" id="settings-modal-status"></div>

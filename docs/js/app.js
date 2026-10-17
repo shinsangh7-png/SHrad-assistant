@@ -834,6 +834,62 @@ document.getElementById("save-settings-btn").addEventListener("click", () => {
   setTimeout(closeSettingsModal, 500);
 });
 
+// --- Moving templates + rules between computers (export file / full-replace import) ---
+const dataTransferStatus = document.getElementById("data-transfer-status");
+const importDataInput = document.getElementById("import-data-input");
+
+function setDataTransferStatus(msg, isError = false) {
+  dataTransferStatus.textContent = msg;
+  dataTransferStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
+}
+
+document.getElementById("export-data-btn").addEventListener("click", () => {
+  const payload = storage.exportShared();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `sh-rad-templates-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setDataTransferStatus(`내보냈습니다 (${link.download}). 다른 컴퓨터에서 '불러오기'로 선택하세요.`);
+});
+
+document.getElementById("import-data-btn").addEventListener("click", () => importDataInput.click());
+
+importDataInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // so picking the same file again still fires "change"
+  if (!file) return;
+  try {
+    let parsed;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      throw new Error("JSON 파일을 읽을 수 없습니다.");
+    }
+    const { data, summary } = storage.parseSharedExport(parsed);
+    const ok = confirm(
+      `이 컴퓨터의 템플릿/변환 규칙을 모두 지우고 파일 내용으로 바꿉니다.\n` +
+        `(템플릿 ${summary.templates}개, 부위 ${summary.parts}개, 변환 규칙 ${summary.rules}개)\n\n계속할까요?`
+    );
+    if (!ok) {
+      setDataTransferStatus("취소했습니다.");
+      return;
+    }
+    storage.applySharedExport(data);
+    refreshRulesList();
+    renderTemplateModalityStep();
+    setDataTransferStatus(
+      `불러왔습니다 (템플릿 ${summary.templates}개, 부위 ${summary.parts}개, 변환 규칙 ${summary.rules}개).`
+    );
+  } catch (err) {
+    setDataTransferStatus(`불러오기 실패: ${err.message}`, true);
+  }
+});
+
 // --- Init ---
 {
   const s = storage.getSettings();
