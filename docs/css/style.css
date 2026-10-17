@@ -85,6 +85,9 @@ body {
 }
 
 .rules-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
@@ -270,7 +273,9 @@ button:disabled {
 
 #transcript-text {
   width: 100%;
-  height: 200px;
+  /* Scales with the window (a full normal-form template should fit without scrolling) but never
+     drops below the size it was bumped to from 200px; still drag-resizable. */
+  height: clamp(340px, 55vh, 620px);
   resize: vertical;
   font-size: 13px;
   line-height: 1.6;
@@ -389,7 +394,7 @@ button:disabled {
 
 #template-edit-text {
   width: 100%;
-  height: 140px;
+  height: clamp(260px, 50vh, 560px);
   resize: vertical;
   font-size: 13px;
   line-height: 1.5;

@@ -2,7 +2,7 @@ import { storage, applyPostprocessingRules } from "./storage.js";
 import { correctGrammar, generateConclusion } from "./anthropic-client.js";
 import { getCheckpointsClaude, getCheckpointsGemini, getCheckpointsGpt } from "./checkpoints-client.js";
 import { Dictation } from "./dictation.js";
-import { insertAtCursor } from "./cursor-insert.js";
+import { insertAtCursor, setFieldValue } from "./cursor-insert.js";
 import { copyToClipboard } from "./clipboard.js";
 import { attachLineCopyHandles } from "./line-copy.js";
 import { restoreMarkerSpacing } from "./format-guard.js";
@@ -247,42 +247,33 @@ sortBtn.addEventListener("click", () => {
     setMicStatus("정렬할 Conclusion 항목이 없거나 이미 정렬되어 있습니다.");
     return;
   }
-  transcriptText.value = reordered;
+  setFieldValue(transcriptText, reordered);
   setMicStatus("Conclusion 번호 정렬 완료.");
 });
 
-// --- Reset ---
+// --- Clear (the main button, and the same action from inside the Template screen) ---
+function clearTranscript() {
+  setFieldValue(transcriptText, "");
+  setMicStatus("초기화됨");
+}
+
 resetBtn.addEventListener("mousedown", (e) => e.preventDefault());
 resetBtn.addEventListener("click", () => {
-  transcriptText.value = "";
+  clearTranscript();
   transcriptText.focus();
-  setMicStatus("초기화됨");
 });
 
-// --- Copy (Finding/Conclusion/Recommendation, tab-separated, for pasting into PACS) ---
-function extractSection(text, headerRe) {
-  const m = text.match(headerRe);
-  if (!m) return "";
-  const rest = text.slice(m.index + m[0].length);
-  const nextMarkerMatch = rest.match(/\[\s*[^\]]+\s*\]/);
-  const end = nextMarkerMatch ? nextMarkerMatch.index : rest.length;
-  return rest.slice(0, end).trim();
-}
-
-function buildPacsCopyText(text) {
-  const finding = extractSection(text, /\[\s*Finding\s*\]/i);
-  const conclusion = extractSection(text, /\[\s*Conclusion\s*\]/i);
-  const recommendation = extractSection(text, /\[\s*Recommendation\s*\]/i);
-  return [finding, conclusion, recommendation].join("\t");
-}
-
+// --- Copy (the whole text as-is) ---
 const copyBtn = document.getElementById("copy-btn");
 copyBtn.addEventListener("mousedown", (e) => e.preventDefault());
 copyBtn.addEventListener("click", async () => {
-  const payload = buildPacsCopyText(transcriptText.value);
+  if (!transcriptText.value) {
+    setMicStatus("복사할 내용이 없습니다.", true);
+    return;
+  }
   try {
-    await copyToClipboard(payload);
-    setMicStatus("복사됨 (Tab 구분, PACS에 붙여넣기)");
+    await copyToClipboard(transcriptText.value);
+    setMicStatus("복사됨");
   } catch (e) {
     setMicStatus(`복사 실패: ${e.message}`, true);
   }
@@ -480,6 +471,20 @@ const MODALITIES = ["MR", "CT", "US", "X-ray"];
 const templateContent = document.getElementById("template-content");
 const templateContextMenu = document.getElementById("template-context-menu");
 let templateContextTarget = null;
+
+// Sits in the Template screen's static header, so it's there on every step (modality list, part
+// list, template editor) -- the reading pane can be wiped without leaving the Template screen.
+const templateClearBtn = document.getElementById("template-clear-btn");
+const templateClearStatus = document.getElementById("template-clear-status");
+let templateClearTimer = null;
+templateClearBtn.addEventListener("click", () => {
+  clearTranscript();
+  templateClearStatus.textContent = "판독창을 비웠습니다";
+  clearTimeout(templateClearTimer);
+  templateClearTimer = setTimeout(() => {
+    templateClearStatus.textContent = "";
+  }, 1500);
+});
 
 function goToTranscribeTab() {
   document.getElementById("tab-templates").classList.add("hidden");

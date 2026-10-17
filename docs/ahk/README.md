@@ -1,5 +1,10 @@
 # hospital-paste.ahk
 
+> **참고 (변경됨):** SH Rad의 Copy 버튼은 이제 Tab 구분 없이 **전체 텍스트를 그대로** 복사합니다.
+> 아래 설명은 예전(Finding/Conclusion/Recommendation을 Tab으로 구분하던) 동작 기준이에요.
+> 클립보드에 Tab이 없으면 이 스크립트는 한 덩어리로 붙여넣기만 하므로 오류는 없지만,
+> 입력창 사이를 Tab으로 넘기는 기능은 더 이상 쓰이지 않습니다.
+
 SH Rad Assistant의 Copy 버튼은 Finding / Conclusion / Recommendation을 Tab 문자로
 구분해서 클립보드에 넣습니다. 그런데 이걸 병원 판독 프로그램의 한 입력창에 그냥
 붙여넣기(Ctrl+V) 하면, tab 문자가 다음 입력창으로 커서를 옮겨주는 게 아니라 그냥

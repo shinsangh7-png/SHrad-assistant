@@ -20,6 +20,15 @@ export function insertAtCursor(el, text) {
   el.value = before + insert + after;
   const newPos = before.length + insert.length;
   el.selectionStart = el.selectionEnd = newPos;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// Assigning textarea.value from code doesn't fire "input" on its own, so anything listening for
+// edits (the per-line copy handles) would keep showing the old text's layout until the next
+// real keystroke. Go through this whenever the text is replaced programmatically.
+export function setFieldValue(el, value) {
+  el.value = value;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 // Returns `document.activeElement` if it is one of the given candidate elements, else null.
