@@ -30,9 +30,9 @@ const MODEL_OPTIONS = {
     { value: "gemini-3.6-flash", label: "gemini-3.6-flash (기본)" },
   ],
   claude: [
-    { value: "claude-sonnet-5", label: "claude-sonnet-5 (기본)" },
-    { value: "claude-opus-5", label: "claude-opus-5 (고급)" },
-    { value: "claude-haiku-4-5-20251001", label: "claude-haiku-4.5 (경량)" },
+    { value: "claude-sonnet-5-5", label: "sonnet-5.5 (기본)" },
+    { value: "claude-haiku-5-5", label: "haiku-5.5 (가장 빠름)" },
+    { value: "claude-opus-5-5", label: "opus-5.5 (고급, 느림)" },
   ],
 };
 
@@ -135,13 +135,14 @@ function renderMessages(conv) {
       bubble.appendChild(imgRow);
     }
 
-    if (msg.text) {
+    if (msg.text || msg.role === "assistant") {
       const textEl = document.createElement("div");
-      textEl.innerHTML = renderInlineMarkdown(msg.text);
+      textEl.className = "consult-msg-text";
+      textEl.innerHTML = renderInlineMarkdown(msg.text || "");
       bubble.appendChild(textEl);
     }
 
-    if (msg.role === "assistant") {
+    if (msg.role === "assistant" && msg.text) {
       const actions = document.createElement("div");
       actions.className = "consult-msg-actions";
       PROVIDERS.filter((p) => p !== conv.provider).forEach((target) => {
@@ -336,28 +337,57 @@ async function sendMessage() {
   els.input.value = "";
   pendingAttachments = [];
   renderAttachments();
-  setStatus(`${PROVIDER_LABELS[activeProvider]} 응답 대기중...`);
-
   try {
-    const model = storage.consult.getModels()[activeProvider];
-    const answer = await CHAT_CLIENTS[activeProvider]({
-      system: radiologyConsultSystemPrompt(),
-      messages: conv.messages,
-      model,
-    });
-    conv.messages.push({ role: "assistant", text: answer, images: [], ts: Date.now() });
-    autoTitle(conv);
-    conv.updatedAt = Date.now();
-    await saveConversation(conv);
-    storage.consult.setLastConversationId(activeProvider, conv.id);
-    renderMessages(conv);
-    await renderSidebar(activeProvider);
-    setStatus("");
-  } catch (e) {
-    setStatus(e.message || String(e), true);
+    await streamAnswer(activeProvider, conv);
   } finally {
     sending = false;
     els.sendBtn.disabled = false;
+  }
+}
+
+// Asks `provider` for the next reply in `conv`, showing the text live in a new assistant bubble as
+// it streams in. On failure an empty bubble is removed again (so the unanswered user turn can just
+// be re-sent), while a partial answer is kept rather than thrown away.
+async function streamAnswer(provider, conv) {
+  const label = PROVIDER_LABELS[provider];
+  setStatus(`${label} 응답 대기중...`);
+  const reply = { role: "assistant", text: "", images: [], ts: Date.now() };
+  conv.messages.push(reply);
+  renderMessages(conv);
+  const bubbleText = els.messages.lastElementChild?.querySelector(".consult-msg-text");
+  bubbleText?.classList.add("streaming");
+
+  const isVisible = () => currentConv[activeProvider] === conv;
+  try {
+    const model = storage.consult.getModels()[provider];
+    reply.text = await CHAT_CLIENTS[provider]({
+      system: radiologyConsultSystemPrompt(),
+      messages: conv.messages.slice(0, -1),
+      model,
+      onDelta: (text) => {
+        reply.text = text;
+        if (!isVisible() || !bubbleText) return;
+        const nearBottom = els.messages.scrollHeight - els.messages.scrollTop - els.messages.clientHeight < 80;
+        bubbleText.innerHTML = renderInlineMarkdown(text);
+        if (nearBottom) scrollMessagesToBottom();
+        setStatus(`${label} 답변 중...`);
+      },
+      onRetry: (n, why) => isVisible() && setStatus(`${label} ${why} — 자동 재시도 중 (${n}/3)...`),
+    });
+    setStatus("");
+  } catch (e) {
+    if (!reply.text.trim()) conv.messages.pop();
+    setStatus(e.message || String(e), true);
+  }
+  if (conv.messages.length && conv.messages[conv.messages.length - 1].role === "assistant") {
+    autoTitle(conv);
+    conv.updatedAt = Date.now();
+    await saveConversation(conv);
+    storage.consult.setLastConversationId(provider, conv.id);
+  }
+  if (isVisible()) {
+    renderMessages(conv);
+    await renderSidebar(provider);
   }
 }
 
@@ -375,26 +405,7 @@ async function sendTo(targetProvider, sourceConv, msgIndex) {
   currentConv[targetProvider] = target;
 
   await switchProvider(targetProvider);
-  setStatus(`${PROVIDER_LABELS[targetProvider]} 응답 대기중...`);
-
-  try {
-    const model = storage.consult.getModels()[targetProvider];
-    const answer = await CHAT_CLIENTS[targetProvider]({
-      system: radiologyConsultSystemPrompt(),
-      messages: target.messages,
-      model,
-    });
-    target.messages.push({ role: "assistant", text: answer, images: [], ts: Date.now() });
-    target.updatedAt = Date.now();
-    await saveConversation(target);
-    storage.consult.setLastConversationId(targetProvider, target.id);
-    renderMessages(target);
-    await renderSidebar(targetProvider);
-    setStatus("");
-  } catch (e) {
-    setStatus(e.message || String(e), true);
-    renderMessages(target);
-  }
+  await streamAnswer(targetProvider, target);
 }
 
 function slideToText(slide) {
@@ -537,7 +548,7 @@ els.pptModal.addEventListener("click", (e) => {
 });
 
 // --- Settings: theme + API keys. This uses the same settings object shape as the SH Rad
-// transcribe app (storage.getSettings()/saveSettings()), but Rad AI now lives on its own origin
+// transcribe app (storage.getSettings()/saveSettings()), but ASK (formerly Rad AI) lives on its own origin
 // (Netlify, separate from SH Rad's GitHub Pages one), so the underlying localStorage is NOT
 // actually shared -- each app keeps its own copy, edited only through its own settings modal. ---
 const THEME_CLASSES = ["theme-gray", "theme-graydark", "theme-blue", "theme-coral"];

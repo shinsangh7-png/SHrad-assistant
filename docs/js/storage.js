@@ -14,7 +14,7 @@ const DEFAULT_CONSULT_MODELS = {
   // The same model SH Rad's REFER and dictation already call with this Gemini key, so it's the one
   // id known to work here. The pro models need a billed project (free tier quota is 0) or are retired.
   gemini: "gemini-3.6-flash",
-  claude: "claude-sonnet-5",
+  claude: "claude-sonnet-5-5",
 };
 
 // Model ids that earlier defaults/options shipped with but don't work for this setup (retired by
@@ -25,6 +25,10 @@ const DROPPED_CONSULT_MODELS = new Set([
   "gemini-3-pro-latest",
   "gemini-2.5-flash",
   "gemini-3.1-pro-preview",
+  // Previous Claude defaults -- superseded by the faster 5.5 generation.
+  "claude-sonnet-5",
+  "claude-opus-5",
+  "claude-haiku-4-5-20251001",
 ]);
 
 // Starter body-part list per modality, seeded once per modality (not globally) into

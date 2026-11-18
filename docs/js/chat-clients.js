@@ -40,106 +40,225 @@ function base64Of(dataUrl) {
   return dataUrl.slice(dataUrl.indexOf(",") + 1);
 }
 
-async function callClaude({ system, messages, model }) {
+// --- Streaming + retry plumbing shared by all three chat providers ---------------------------
+// Every reply streams (SSE) so text appears as soon as the model starts writing instead of after
+// the whole answer is done -- by far the biggest perceived-speed win, especially for Claude/Gemini.
+// Transient failures (429 rate limit, 5xx "overloaded") are retried automatically with backoff,
+// which is what most of Gemini's red errors were: momentary overload or per-minute limits.
+
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
+const RETRY_DELAYS_MS = [2000, 5000, 10000];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchWithRetry(url, options, { label, onRetry }) {
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, options);
+    } catch (e) {
+      if (attempt >= RETRY_DELAYS_MS.length) throw new Error(`${label} 연결 실패: ${e.message || e}`);
+      onRetry?.(attempt + 1, "연결 실패");
+      await sleep(RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
+    if (res.ok) return res;
+    const detail = await res.json().catch(() => ({}));
+    const rawMsg = (Array.isArray(detail) ? detail[0] : detail)?.error?.message || "";
+    // A daily quota that's used up won't come back in a few seconds -- don't make the user wait
+    // through pointless retries for it.
+    const dailyQuota = /per\s*day|PerDay|daily/i.test(rawMsg);
+    if (RETRY_STATUSES.has(res.status) && !dailyQuota && attempt < RETRY_DELAYS_MS.length) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      onRetry?.(attempt + 1, res.status === 429 ? "요청 한도" : "서버 과부하");
+      await sleep(retryAfter > 0 && retryAfter <= 30 ? retryAfter * 1000 : RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
+    throw new Error(friendlyError(label, res.status, rawMsg, dailyQuota));
+  }
+}
+
+function friendlyError(label, status, rawMsg, dailyQuota) {
+  let hint = "";
+  if (status === 429 && dailyQuota) hint = "오늘 사용 한도를 다 썼습니다 (무료 등급 일일 한도). 내일 풀리거나, 유료 결제 설정이 필요합니다.";
+  else if (status === 429) hint = "요청 한도에 걸렸습니다 (분당 한도). 잠시 후 다시 보내주세요.";
+  else if (status >= 500) hint = "서버가 일시적으로 과부하 상태입니다. 잠시 후 다시 보내주세요.";
+  const base = hint ? `${label}: ${hint}` : `${label} API 오류 (HTTP ${status})`;
+  return rawMsg ? `${base}\n(${rawMsg.slice(0, 200)})` : base;
+}
+
+// Yields each parsed `data:` JSON payload from a server-sent-events response body.
+async function* readSse(res) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        yield JSON.parse(data);
+      } catch {
+        // partial/garbled line -- skip
+      }
+    }
+  }
+}
+
+// Claude 5.5 models: low effort keeps the quick-colleague-question latency down (they think far
+// less before answering); Opus is the deliberate "take your time" pick, so it gets medium.
+function claudeEffort(model) {
+  return /opus/.test(model) ? "medium" : "low";
+}
+
+async function callClaude({ system, messages, model, onDelta, onRetry }) {
   const key = storage.getSettings().anthropicApiKey;
   if (!key) throw new Error("Anthropic API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 4096,
-      system,
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: [
-          ...(m.images || []).map((im) => ({
-            type: "image",
-            source: { type: "base64", media_type: im.mime, data: base64Of(im.dataUrl) },
-          })),
-          { type: "text", text: m.text || "(이미지만 첨부됨)" },
-        ],
-      })),
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail?.error?.message || `Claude API 오류 (HTTP ${res.status})`);
-  }
-  const data = await res.json();
-  const textBlock = data.content.find((b) => b.type === "text");
-  return (textBlock ? textBlock.text : "").trim();
-}
-
-async function callGpt({ system, messages, model }) {
-  const key = storage.getSettings().openaiApiKey;
-  if (!key) throw new Error("OpenAI API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
-
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: system },
-        ...messages.map((m) => ({
-          role: m.role,
-          content: [
-            { type: "text", text: m.text || "(이미지만 첨부됨)" },
-            ...(m.images || []).map((im) => ({ type: "image_url", image_url: { url: im.dataUrl } })),
-          ],
-        })),
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail?.error?.message || `GPT API 오류 (HTTP ${res.status})`);
-  }
-  const data = await res.json();
-  return (data.choices?.[0]?.message?.content || "").trim();
-}
-
-async function callGemini({ system, messages, model }) {
-  const key = storage.getSettings().geminiApiKey;
-  if (!key) throw new Error("Gemini API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+  const res = await fetchWithRetry(
+    "https://api.anthropic.com/v1/messages",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: messages.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [
-            ...(m.images || []).map((im) => ({ inline_data: { mime_type: im.mime, data: base64Of(im.dataUrl) } })),
-            { text: m.text || "(이미지만 첨부됨)" },
+        model,
+        max_tokens: 16000,
+        stream: true,
+        output_config: { effort: claudeEffort(model) },
+        system,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: [
+            ...(m.images || []).map((im) => ({
+              type: "image",
+              source: { type: "base64", media_type: im.mime, data: base64Of(im.dataUrl) },
+            })),
+            { type: "text", text: m.text || "(이미지만 첨부됨)" },
           ],
         })),
       }),
-    }
+    },
+    { label: "Claude", onRetry }
   );
 
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail?.error?.message || `Gemini API 오류 (HTTP ${res.status})`);
+  let text = "";
+  for await (const ev of readSse(res)) {
+    if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") {
+      text += ev.delta.text;
+      onDelta?.(text);
+    } else if (ev.type === "message_delta" && ev.delta?.stop_reason === "refusal") {
+      text += text ? "\n\n(응답이 중단되었습니다)" : "(Claude가 이 질문에 답하지 않았습니다. 다른 AI로 보내보세요.)";
+      onDelta?.(text);
+    } else if (ev.type === "error") {
+      throw new Error(friendlyError("Claude", ev.error?.type === "overloaded_error" ? 529 : 500, ev.error?.message || "", false));
+    }
   }
-  const data = await res.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  return parts
-    .map((p) => p.text || "")
-    .join("")
-    .trim();
+  return text.trim();
+}
+
+async function callGpt({ system, messages, model, onDelta, onRetry }) {
+  const key = storage.getSettings().openaiApiKey;
+  if (!key) throw new Error("OpenAI API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+
+  const res = await fetchWithRetry(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        stream: true,
+        messages: [
+          { role: "system", content: system },
+          ...messages.map((m) => ({
+            role: m.role,
+            content: [
+              { type: "text", text: m.text || "(이미지만 첨부됨)" },
+              ...(m.images || []).map((im) => ({ type: "image_url", image_url: { url: im.dataUrl } })),
+            ],
+          })),
+        ],
+      }),
+    },
+    { label: "GPT", onRetry }
+  );
+
+  let text = "";
+  for await (const ev of readSse(res)) {
+    const delta = ev.choices?.[0]?.delta?.content;
+    if (delta) {
+      text += delta;
+      onDelta?.(text);
+    }
+  }
+  return text.trim();
+}
+
+// Gemini 3 flash models think before answering by default, which is most of why they felt so slow
+// here. "low" thinking keeps the accuracy that made Gemini the favourite while cutting the wait a
+// lot. If a model ever rejects the setting, the request is retried once without it.
+async function callGemini({ system, messages, model, onDelta, onRetry }) {
+  const key = storage.getSettings().geminiApiKey;
+  if (!key) throw new Error("Gemini API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
+
+  const body = (withThinkingConfig) =>
+    JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [
+          ...(m.images || []).map((im) => ({ inline_data: { mime_type: im.mime, data: base64Of(im.dataUrl) } })),
+          { text: m.text || "(이미지만 첨부됨)" },
+        ],
+      })),
+      ...(withThinkingConfig ? { generationConfig: { thinkingConfig: { thinkingLevel: "low" } } } : {}),
+    });
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}`;
+  const opts = (withThinking) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: body(withThinking) });
+
+  let res;
+  try {
+    res = await fetchWithRetry(url, opts(true), { label: "Gemini", onRetry });
+  } catch (e) {
+    if (!/thinking/i.test(e.message)) throw e;
+    res = await fetchWithRetry(url, opts(false), { label: "Gemini", onRetry });
+  }
+
+  let text = "";
+  let finishReason = "";
+  for await (const ev of readSse(res)) {
+    if (ev.error) throw new Error(friendlyError("Gemini", ev.error.code || 500, ev.error.message || "", false));
+    const cand = ev.candidates?.[0];
+    const parts = cand?.content?.parts || [];
+    // Skip thought-summary parts; only the actual answer goes on screen.
+    const delta = parts.filter((p) => !p.thought).map((p) => p.text || "").join("");
+    if (delta) {
+      text += delta;
+      onDelta?.(text);
+    }
+    if (cand?.finishReason) finishReason = cand.finishReason;
+    if (ev.promptFeedback?.blockReason) finishReason = `BLOCKED_${ev.promptFeedback.blockReason}`;
+  }
+  if (!text.trim()) {
+    throw new Error(
+      finishReason && finishReason !== "STOP"
+        ? `Gemini가 답변을 생성하지 않았습니다 (${finishReason}). 다시 보내거나 다른 AI로 보내보세요.`
+        : "Gemini 응답이 비어 있습니다. 다시 보내주세요."
+    );
+  }
+  return text.trim();
 }
 
 export const CHAT_CLIENTS = { claude: callClaude, gpt: callGpt, gemini: callGemini };
@@ -168,47 +287,55 @@ async function generateSlidesClaude({ system, text, model }) {
   const key = storage.getSettings().anthropicApiKey;
   if (!key) throw new Error("Anthropic API 키가 설정되지 않았습니다. 설정에서 입력해주세요.");
 
-  const tool = {
-    name: "ppt_slides",
-    description: "Slides summarizing the consult conversation.",
-    input_schema: {
-      type: "object",
-      properties: {
-        slides: {
-          type: "array",
-          items: { type: "object", properties: SLIDES_SCHEMA_PROPERTIES, required: ["title", "bullets"] },
+  // Structured outputs (not a forced tool call -- the 5.5 models reject forced tool_choice) so the
+  // API itself guarantees valid JSON in the shape below.
+  const schema = {
+    type: "object",
+    properties: {
+      slides: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: SLIDES_SCHEMA_PROPERTIES,
+          required: ["title", "bullets"],
+          additionalProperties: false,
         },
       },
-      required: ["slides"],
     },
+    required: ["slides"],
+    additionalProperties: false,
   };
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
+  const res = await fetchWithRetry(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 16000,
+        system,
+        output_config: { effort: "low", format: { type: "json_schema", schema } },
+        messages: [{ role: "user", content: text }],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2048,
-      system,
-      tools: [tool],
-      tool_choice: { type: "tool", name: "ppt_slides" },
-      messages: [{ role: "user", content: text }],
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail?.error?.message || `Claude API 오류 (HTTP ${res.status})`);
-  }
+    { label: "Claude" }
+  );
   const data = await res.json();
-  const toolUse = data.content.find((b) => b.type === "tool_use");
-  if (!toolUse) throw new Error("요약 결과를 가져오지 못했습니다.");
-  return parseSlidesResult(toolUse.input);
+  const textOut = data.content?.find((b) => b.type === "text")?.text;
+  if (!textOut) throw new Error("요약 결과를 가져오지 못했습니다.");
+  let parsed;
+  try {
+    parsed = JSON.parse(textOut);
+  } catch {
+    throw new Error("요약 결과 형식 오류.");
+  }
+  return parseSlidesResult(parsed);
 }
 
 async function generateSlidesGpt({ system, text, model }) {

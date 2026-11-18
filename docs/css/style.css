@@ -893,6 +893,12 @@ button:disabled {
   box-shadow: var(--shadow-sm);
 }
 
+/* Assistant reply while it streams in: a muted hint until the first words arrive. */
+.consult-msg-text.streaming:empty::before {
+  content: "생각 중…";
+  color: var(--muted);
+}
+
 .consult-msg-images {
   display: flex;
   flex-wrap: wrap;
