@@ -372,7 +372,8 @@ async function streamAnswer(provider, conv) {
         if (nearBottom) scrollMessagesToBottom();
         setStatus(`${label} 답변 중...`);
       },
-      onRetry: (n, why) => isVisible() && setStatus(`${label} ${why} — 자동 재시도 중 (${n}/3)...`),
+      onRetry: (n, why, total) =>
+        isVisible() && setStatus(n ? `${label} ${why} — 자동 재시도 중 (${n}/${total})...` : `${label} ${why}...`),
     });
     setStatus("");
   } catch (e) {

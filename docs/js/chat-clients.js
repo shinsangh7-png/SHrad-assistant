@@ -50,15 +50,15 @@ const RETRY_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
 const RETRY_DELAYS_MS = [2000, 5000, 10000];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchWithRetry(url, options, { label, onRetry }) {
+async function fetchWithRetry(url, options, { label, onRetry, delays = RETRY_DELAYS_MS }) {
   for (let attempt = 0; ; attempt++) {
     let res;
     try {
       res = await fetch(url, options);
     } catch (e) {
-      if (attempt >= RETRY_DELAYS_MS.length) throw new Error(`${label} 연결 실패: ${e.message || e}`);
-      onRetry?.(attempt + 1, "연결 실패");
-      await sleep(RETRY_DELAYS_MS[attempt]);
+      if (attempt >= delays.length) throw new Error(`${label} 연결 실패: ${e.message || e}`);
+      onRetry?.(attempt + 1, "연결 실패", delays.length);
+      await sleep(delays[attempt]);
       continue;
     }
     if (res.ok) return res;
@@ -67,13 +67,15 @@ async function fetchWithRetry(url, options, { label, onRetry }) {
     // A daily quota that's used up won't come back in a few seconds -- don't make the user wait
     // through pointless retries for it.
     const dailyQuota = /per\s*day|PerDay|daily/i.test(rawMsg);
-    if (RETRY_STATUSES.has(res.status) && !dailyQuota && attempt < RETRY_DELAYS_MS.length) {
+    if (RETRY_STATUSES.has(res.status) && !dailyQuota && attempt < delays.length) {
       const retryAfter = Number(res.headers.get("retry-after"));
-      onRetry?.(attempt + 1, res.status === 429 ? "요청 한도" : "서버 과부하");
-      await sleep(retryAfter > 0 && retryAfter <= 30 ? retryAfter * 1000 : RETRY_DELAYS_MS[attempt]);
+      onRetry?.(attempt + 1, res.status === 429 ? "요청 한도" : "서버 과부하", delays.length);
+      await sleep(retryAfter > 0 && retryAfter <= 30 ? retryAfter * 1000 : delays[attempt]);
       continue;
     }
-    throw new Error(friendlyError(label, res.status, rawMsg, dailyQuota));
+    const err = new Error(friendlyError(label, res.status, rawMsg, dailyQuota));
+    err.status = res.status;
+    throw err;
   }
 }
 
@@ -205,6 +207,10 @@ async function callGpt({ system, messages, model, onDelta, onRetry }) {
   return text.trim();
 }
 
+// Tried in order when the chosen Gemini model is overloaded. Aliases, so they keep pointing at
+// current models; any that don't exist for this key are skipped.
+const GEMINI_FALLBACK_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest"];
+
 // Gemini 3 flash models think before answering by default, which is most of why they felt so slow
 // here. "low" thinking keeps the accuracy that made Gemini the favourite while cutting the wait a
 // lot. If a model ever rejects the setting, the request is retried once without it.
@@ -225,15 +231,39 @@ async function callGemini({ system, messages, model, onDelta, onRetry }) {
       ...(withThinkingConfig ? { generationConfig: { thinkingConfig: { thinkingLevel: "low" } } } : {}),
     });
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}`;
+  const urlFor = (m) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse&key=${key}`;
   const opts = (withThinking) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: body(withThinking) });
 
+  async function open(m, delays) {
+    try {
+      return await fetchWithRetry(urlFor(m), opts(true), { label: "Gemini", onRetry, delays });
+    } catch (e) {
+      if (!/thinking/i.test(e.message)) throw e;
+      return fetchWithRetry(urlFor(m), opts(false), { label: "Gemini", onRetry, delays });
+    }
+  }
+
+  // Google's free tier gets "model is overloaded" (503) a lot at busy hours -- even on the very first
+  // question -- and waiting on the same model rarely helps. So: one quick retry on the chosen model,
+  // then switch to the other flash models, which run on separate capacity.
   let res;
+  let usedModel = model;
   try {
-    res = await fetchWithRetry(url, opts(true), { label: "Gemini", onRetry });
+    res = await open(model, [1500]);
   } catch (e) {
-    if (!/thinking/i.test(e.message)) throw e;
-    res = await fetchWithRetry(url, opts(false), { label: "Gemini", onRetry });
+    if (!(e.status >= 500)) throw e;
+    for (const fb of GEMINI_FALLBACK_MODELS.filter((m) => m !== model)) {
+      onRetry?.(0, `과부하 — ${fb}로 전환 중`, 0);
+      try {
+        res = await open(fb, [2000]);
+        usedModel = fb;
+        break;
+      } catch (e2) {
+        // A retired/unknown alias (404/400) or another overload: just try the next one.
+        if (e2.status === 429) throw e2;
+      }
+    }
+    if (!res) throw e;
   }
 
   let text = "";
@@ -257,6 +287,12 @@ async function callGemini({ system, messages, model, onDelta, onRetry }) {
         ? `Gemini가 답변을 생성하지 않았습니다 (${finishReason}). 다시 보내거나 다른 AI로 보내보세요.`
         : "Gemini 응답이 비어 있습니다. 다시 보내주세요."
     );
+  }
+  if (usedModel !== model) {
+    text = `${text.trim()}
+
+(${model} 과부하로 ${usedModel}가 대신 답변했습니다)`;
+    onDelta?.(text);
   }
   return text.trim();
 }
